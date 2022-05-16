@@ -1,0 +1,4 @@
+/ci
+/contrib/gregbook
+/projects
+/tests

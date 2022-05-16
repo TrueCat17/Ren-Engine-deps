@@ -1,0 +1,12 @@
+cpython:    https://github.com/python/cpython.git --branch v2.7.18
+jemalloc:   https://github.com/jemalloc/jemalloc.git
+ffmpeg:     https://git.ffmpeg.org/ffmpeg.git
+zlib:       https://github.com/zlib-ng/zlib-ng.git
+brotli:     https://github.com/google/brotli.git
+freetype:   https://github.com/freetype/freetype.git
+libjpeg:    https://github.com/libjpeg-turbo/libjpeg-turbo.git
+libpng:     https://github.com/glennrp/libpng.git
+libwebp:    https://github.com/webmproject/libwebp.git
+SDL:        https://github.com/libsdl-org/SDL.git
+SDL_image:  https://github.com/libsdl-org/SDL_image.git
+SDL_ttf:    https://github.com/libsdl-org/SDL_ttf.git

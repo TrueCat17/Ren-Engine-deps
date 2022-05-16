@@ -1,0 +1,12 @@
+/download/cache/
+/download/progress_list.txt
+
+/linux-i686/
+/linux-x86_64/
+/win32/
+
+/scripts/params.txt
+/scripts/progress_list.txt
+
+/sources/brotli/out/
+/sources/libjpeg-turbo/builds/

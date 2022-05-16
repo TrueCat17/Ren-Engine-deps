@@ -1,0 +1,7 @@
+/doc
+/gradle
+/swig
+/tests
+/webp_js
+
+/ChangeLog

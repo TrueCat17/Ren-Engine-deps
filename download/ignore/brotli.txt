@@ -1,0 +1,9 @@
+/csharp/
+/docs/
+/fetch-spec/
+/go/
+/java/
+/js/
+/python/
+/research/
+/tests/

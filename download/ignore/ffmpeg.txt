@@ -1,0 +1,24 @@
+/doc/
+/fftools/
+/libpostproc/
+/libavdevice/
+/libavfilter/
+/libswscale/
+/presets/
+/tests/ref/
+/tools/
+!Makefile
+
+# remove all codecs/formats, but not mp3/ogg/vorbis/opus?
+
+/libavcodec/loongarch
+/libavcodec/mips
+/libavcodec/neon
+/libavcodec/ppc
+/libavcodec/sh4
+/libavcodec/sparc
+/libavcodec/tests
+/libavcodec/aarch64
+/libavcodec/alpha
+/libavcodec/avr32
+/libavcodec/bfin

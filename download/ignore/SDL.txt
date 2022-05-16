@@ -1,0 +1,13 @@
+/cmake/
+/docs/
+/src/video/khronos/vulkan/
+/src/test/
+!/src/test/SDL_test_random.c
+/test/
+/VisualC/
+/VisualC-WinRT/
+/visualtest/
+/Xcode/
+/Xcode-iOS/
+/cmake_uninstall.cmake.in
+/CMakeLists.txt

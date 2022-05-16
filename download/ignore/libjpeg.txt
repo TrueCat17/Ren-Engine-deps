@@ -1,0 +1,8 @@
+/doc/
+/fuzz/
+/java/
+/sharedlib/
+/simd/mips/
+/simd/mips64/
+/simd/powerpc/
+/testimages/

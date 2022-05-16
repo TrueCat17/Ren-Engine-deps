@@ -1,0 +1,5 @@
+/test/
+!/test/fuzz/
+!/test/example.c
+!/test/minigzip.c
+!/test/Makefile.in
