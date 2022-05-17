@@ -10,6 +10,8 @@ export LDFLAGS="-lm -flto"
 export BROTLI_CFLAGS="-I$PWD/../$BROTLI_DIR/c/include"
 export BROTLI_LIBS="-L$PWD/../000res"
 
+./autogen.sh
+
 ./configure \
 	--disable-shared \
 	--enable-static \
