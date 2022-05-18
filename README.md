@@ -72,7 +72,7 @@ Ok!
 ```
 
 
-5. Copy include-files:
+6. Copy include-files:
 ```
 $ ./copy_incs.py
 ```
