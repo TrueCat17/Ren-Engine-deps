@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 # Perform massive identifier substitution on C source files.
 # This actually tokenizes the files (to some extent) so it can
@@ -62,7 +62,7 @@ def usage():
 def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'crs:')
-    except getopt.error, msg:
+    except getopt.error as msg:
         err('Options error: ' + str(msg) + '\n')
         usage()
         sys.exit(2)
@@ -97,7 +97,7 @@ def recursedown(dirname):
     bad = 0
     try:
         names = os.listdir(dirname)
-    except os.error, msg:
+    except OSError as msg:
         err(dirname + ': cannot list directory: ' + str(msg) + '\n')
         return 1
     names.sort()
@@ -124,7 +124,7 @@ def fix(filename):
         # File replacement mode
         try:
             f = open(filename, 'r')
-        except IOError, msg:
+        except IOError as msg:
             err(filename + ': cannot open: ' + str(msg) + '\n')
             return 1
         head, tail = os.path.split(filename)
@@ -148,7 +148,7 @@ def fix(filename):
             if g is None:
                 try:
                     g = open(tempname, 'w')
-                except IOError, msg:
+                except IOError as msg:
                     f.close()
                     err(tempname+': cannot create: '+
                         str(msg)+'\n')
@@ -175,18 +175,18 @@ def fix(filename):
     # First copy the file's mode to the temp file
     try:
         statbuf = os.stat(filename)
-        os.chmod(tempname, statbuf[ST_MODE] & 07777)
-    except os.error, msg:
+        os.chmod(tempname, statbuf[ST_MODE] & 0o7777)
+    except OSError as msg:
         err(tempname + ': warning: chmod failed (' + str(msg) + ')\n')
     # Then make a backup of the original file as filename~
     try:
         os.rename(filename, filename + '~')
-    except os.error, msg:
+    except OSError as msg:
         err(filename + ': warning: backup failed (' + str(msg) + ')\n')
     # Now move the temp file to the original file
     try:
         os.rename(tempname, filename)
-    except os.error, msg:
+    except OSError as msg:
         err(filename + ': rename failed (' + str(msg) + ')\n')
         return 1
     # Return success
@@ -226,16 +226,16 @@ def initfixline():
 
 def fixline(line):
     global Program
-##  print '-->', repr(line)
+##  print('-->', repr(line))
     i = 0
     while i < len(line):
         match = Program.search(line, i)
         if match is None: break
         i = match.start()
         found = match.group(0)
-##      if Program is InsideCommentProgram: print '...',
-##      else: print '   ',
-##      print found
+##      if Program is InsideCommentProgram: print(end='... ')
+##      else: print(end='    ')
+##      print(found)
         if len(found) == 2:
             if found == '/*':
                 Program = InsideCommentProgram
@@ -246,18 +246,18 @@ def fixline(line):
             subst = Dict[found]
             if Program is InsideCommentProgram:
                 if not Docomments:
-                    print 'Found in comment:', found
+                    print('Found in comment:', found)
                     i = i + n
                     continue
                 if found in NotInComment:
-##                  print 'Ignored in comment:',
-##                  print found, '-->', subst
-##                  print 'Line:', line,
+##                  print(end='Ignored in comment: ')
+##                  print(found, '-->', subst)
+##                  print('Line:', line, end='')
                     subst = found
 ##              else:
-##                  print 'Substituting in comment:',
-##                  print found, '-->', subst
-##                  print 'Line:', line,
+##                  print(end='Substituting in comment: ')
+##                  print(found, '-->', subst)
+##                  print('Line:', line, end='')
             line = line[:i] + subst + line[i+n:]
             n = len(subst)
         i = i + n
@@ -278,39 +278,39 @@ NotInComment = {}
 def addsubst(substfile):
     try:
         fp = open(substfile, 'r')
-    except IOError, msg:
+    except IOError as msg:
         err(substfile + ': cannot read substfile: ' + str(msg) + '\n')
         sys.exit(1)
-    lineno = 0
-    while 1:
-        line = fp.readline()
-        if not line: break
-        lineno = lineno + 1
-        try:
-            i = line.index('#')
-        except ValueError:
-            i = -1          # Happens to delete trailing \n
-        words = line[:i].split()
-        if not words: continue
-        if len(words) == 3 and words[0] == 'struct':
-            words[:2] = [words[0] + ' ' + words[1]]
-        elif len(words) != 2:
-            err(substfile + '%s:%r: warning: bad line: %r' % (substfile, lineno, line))
-            continue
-        if Reverse:
-            [value, key] = words
-        else:
-            [key, value] = words
-        if value[0] == '*':
-            value = value[1:]
-        if key[0] == '*':
-            key = key[1:]
-            NotInComment[key] = value
-        if key in Dict:
-            err('%s:%r: warning: overriding: %r %r\n' % (substfile, lineno, key, value))
-            err('%s:%r: warning: previous: %r\n' % (substfile, lineno, Dict[key]))
-        Dict[key] = value
-    fp.close()
+    with fp:
+        lineno = 0
+        while 1:
+            line = fp.readline()
+            if not line: break
+            lineno = lineno + 1
+            try:
+                i = line.index('#')
+            except ValueError:
+                i = -1          # Happens to delete trailing \n
+            words = line[:i].split()
+            if not words: continue
+            if len(words) == 3 and words[0] == 'struct':
+                words[:2] = [words[0] + ' ' + words[1]]
+            elif len(words) != 2:
+                err(substfile + '%s:%r: warning: bad line: %r' % (substfile, lineno, line))
+                continue
+            if Reverse:
+                [value, key] = words
+            else:
+                [key, value] = words
+            if value[0] == '*':
+                value = value[1:]
+            if key[0] == '*':
+                key = key[1:]
+                NotInComment[key] = value
+            if key in Dict:
+                err('%s:%r: warning: overriding: %r %r\n' % (substfile, lineno, key, value))
+                err('%s:%r: warning: previous: %r\n' % (substfile, lineno, Dict[key]))
+            Dict[key] = value
 
 if __name__ == '__main__':
     main()

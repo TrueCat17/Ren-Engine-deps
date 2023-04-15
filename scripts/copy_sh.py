@@ -1,7 +1,6 @@
 #!/usr/bin/env -S python3 -B
 
 import os
-import shutil
 from config import *
 
 def copy(cmd):
@@ -118,10 +117,6 @@ def set_lto():
 	path = platform + '/' + ('lto' if lto == 'enabled' else 'no_lto')
 	if not os.path.exists(scripts_path + '../' + path):
 		os.makedirs(scripts_path + '../' + path)
-	
-	if platform == 'win32':
-		shutil.copyfile(scripts_path + '../py_win32/msvcr90.dll',  scripts_path + '../' + path + '/msvcr90.dll')
-		shutil.copyfile(scripts_path + '../py_win32/python27.dll', scripts_path + '../' + path + '/python27.dll')
 	
 	print('  LTO:', lto)
 	print()

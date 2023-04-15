@@ -1,15 +1,14 @@
 #!/usr/bin/env -S python3 -B
 
 import os
-import shutil
 
 from config import *
 
 
 libs_on = [
-	'math', '_struct', 'time', 'operator', '_random', '_collections', 'itertools',
-	'_md5', '_sha', '_sha256', '_sha512', 'binascii', 'cStringIO', 'cPickle',
-	'zlib', '_io', 'select', 'fcntl', '_socket', '_functools', 'array',
+	'math', '_struct', '_random', '_pickle',
+	'_md5', '_sha256', '_sha512', 'binascii',
+	'zlib', 'select', 'fcntl', '_socket', 'array',
 ]
 libs_off = ['pwd', '_ssl']
 
@@ -22,12 +21,13 @@ else:
 	print('Python-dir not found')
 	os.sys.exit(1)
 
+setup_file = mods + 'Setup'
 
-src = open(mods + 'Setup.dist', 'rb')
-dst = open(mods + 'Setup', 'wb')
+src = open(setup_file, 'rb')
+lines = [str(i, 'utf8') for i in src]
+src.close()
 
-
-lines = [str(i, 'utf-8') for i in src]
+dst = open(setup_file, 'wb')
 
 def set_on(name, lines):
 	need_continue = False

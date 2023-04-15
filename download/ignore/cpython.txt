@@ -1,4 +1,12 @@
-/Demo
+/.azure-pipelines
 /Doc
 /Mac
+/Misc
+!/Misc/python.pc.in
+!/Misc/python-
 /PC
+/PCbuild
+/Tools
+!/Tools/freeze
+!/Tools/gdb
+!/Tools/scripts

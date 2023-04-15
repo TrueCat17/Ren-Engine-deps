@@ -1,4 +1,4 @@
-cpython:    https://github.com/python/cpython.git --branch v2.7.18
+cpython:    https://github.com/python/cpython.git --branch v3.11.3
 jemalloc:   https://github.com/jemalloc/jemalloc.git
 ffmpeg:     https://git.ffmpeg.org/ffmpeg.git
 zlib:       https://github.com/zlib-ng/zlib-ng.git

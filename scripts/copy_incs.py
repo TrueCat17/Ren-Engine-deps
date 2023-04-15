@@ -14,31 +14,28 @@ if os.path.exists(inc_path):
 
 
 
-if platform == 'win32':
-	shutil.copytree(scripts_path + '../py_win32/include', inc_path + '/python2.7')
+for i in os.listdir(sources_path):
+	if os.path.isdir(sources_path + i) and i.startswith('cpython'):
+		shutil.copytree(sources_path + i + '/Include', inc_path + '/python3')
+		
+		src_pyconfig = open(sources_path + i + '/pyconfig.h', 'rb')
+		dst_pyconfig = open(inc_path + '/python3/pyconfig.h', 'wb')
+		
+		macros = '_POSIX_C_SOURCE _XOPEN_SOURCE _XOPEN_SOURCE_EXTENDED __BSD_VISIBLE __EXTENSIONS__'.split(' ')
+		for line in src_pyconfig:
+			line = str(line, 'utf8')
+			
+			for macro in macros:
+				if line.startswith('#define ' + macro):
+					line = '#ifndef ' + macro + '\n\t' + line + '#endif\n'
+			
+			dst_pyconfig.write(bytes(line, 'utf8'))
+		
+		src_pyconfig.close()
+		dst_pyconfig.close()
+		break
 else:
-	for i in os.listdir(sources_path):
-		if os.path.isdir(sources_path + i) and i.startswith('cpython'):
-			shutil.copytree(sources_path + i + '/Include', inc_path + '/python2.7')
-			
-			src_pyconfig = open(sources_path + i + '/pyconfig.h', 'rb')
-			dst_pyconfig = open(inc_path + '/python2.7/pyconfig.h', 'wb')
-			
-			macros = '_POSIX_C_SOURCE _XOPEN_SOURCE _XOPEN_SOURCE_EXTENDED __BSD_VISIBLE __EXTENSIONS__'.split(' ')
-			for line in src_pyconfig:
-				line = str(line, 'utf8')
-				
-				for macro in macros:
-					if line.startswith('#define ' + macro):
-						line = '#ifndef ' + macro + '\n\t' + line + '#endif\n'
-				
-				dst_pyconfig.write(bytes(line, 'utf8'))
-			
-			src_pyconfig.close()
-			dst_pyconfig.close()
-			break
-	else:
-		print('Python sources not found')
+	print('Python sources not found')
 
 
 
