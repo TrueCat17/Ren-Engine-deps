@@ -7,10 +7,10 @@ from config import *
 
 libs_on = [
 	'math', '_struct', '_random', '_pickle',
-	'_md5', '_sha256', '_sha512', 'binascii', 'unicodedata',
+	'_sha256', '_sha512', 'binascii', 'unicodedata',
 	'zlib', 'select', 'fcntl', '_socket', 'array',
 ]
-libs_off = ['pwd', '_ssl']
+libs_off = ['pwd', '_ssl', '_md5']
 
 
 for i in os.listdir(sources_path):

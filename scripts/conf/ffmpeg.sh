@@ -29,6 +29,8 @@ export LDFLAGS="-lm -flto"
 	--enable-demuxer=mp3 \
 	--enable-demuxer=ogg \
 	\
+	--enable-muxer=md5 \
+	\
 	--disable-alsa \
 	--disable-iconv \
 	\
