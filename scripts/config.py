@@ -1,8 +1,7 @@
 import os
 
 libs = ['cpython', 'jemalloc', 'ffmpeg', 'zlib', 'brotli', 'freetype', 'libjpeg', 'libpng', 'libwebp', 'SDL', 'SDL_image', 'SDL_ttf']
-if os.sys.platform in ('win32', 'msys', 'msys2', 'cygwin'):
-	libs.remove('cpython')
+if os.sys.platform == 'cygwin':
 	libs.remove('jemalloc')
 
 scripts_path = os.path.dirname(os.path.abspath(__file__)) + '/'

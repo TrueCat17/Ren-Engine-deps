@@ -11,4 +11,4 @@ cd ./build
 cmake .. -G "Unix Makefiles" \
 	-DCMAKE_BUILD_TYPE=Release -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DWITH_TURBOJPEG=OFF
 
-make clean
+rm -f ../jconfig.h ../jconfigint.h ../jversion.h

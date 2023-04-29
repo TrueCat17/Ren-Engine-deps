@@ -5,6 +5,6 @@ export CC="gcc"
 export CFLAGS="-O2 -flto"
 export LDFLAGS="-lm -flto"
 
-./configure --static --zlib-compat --without-gzfileops
+./configure --static --zlib-compat
 
 make clean

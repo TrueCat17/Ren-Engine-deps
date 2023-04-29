@@ -18,6 +18,10 @@ for i in os.listdir(sources_path):
 	if os.path.isdir(sources_path + i) and i.startswith('cpython'):
 		shutil.copytree(sources_path + i + '/Include', inc_path + '/python3')
 		
+		# remove __declspec (for cygwin)
+		exports_file_paths = (sources_path + i + '/Include/exports.h', inc_path + '/python3/exports.h')
+		os.system('sed -e "s/__declspec.*//" %s > %s' % exports_file_paths)
+		
 		src_pyconfig = open(sources_path + i + '/pyconfig.h', 'rb')
 		dst_pyconfig = open(inc_path + '/python3/pyconfig.h', 'wb')
 		

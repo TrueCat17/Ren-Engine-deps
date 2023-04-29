@@ -1,30 +1,34 @@
 ## Preparing
 
 For start, **if your OS is Windows**, you must download and install
-[MSYS2 32-bit](https://repo.msys2.org/distrib/msys2-i686-latest.exe).  
-Warning: don't use any 64-bit packages (with x86_64), only 32-bit (with i686).  
-Warning: use **shell** MSYS, not MinGW\*.  
-After it, you must update package database in MSYS2's PACkage MANager:  
-`pacman -Syu`  
-and (if needed, close MSYS and run it again) update rest:  
-`pacman -Su`  
-If you have some errors with PGP keys (or other problems),
-see [this page](https://www.msys2.org/news/#2020-06-29-new-packagers),
-fix problem and run prev 2 commands again.  
-Also you must open `%msys2_dir%/home/user/.bashrc`, add `PATH="/mingw32/bin:$PATH"` and restart MSYS.
+[Cygwin](https://cygwin.com).  
+* For new Windows use x86_64 installer.
+* For old or/and 32-bit system (win7-x32, for example) use old unsupported (archived) x86 installer
+with archived repo (see [Cygwin install page](https://cygwin.com/install.html)).
+
+**Warning**: `setup-x86.exe` requires an option `--allow-unsupported-windows` for start on old Windows.  
+You can:
+* specify this from `cmd`,
+* make `Shortcut` and add this option in the end of the path (after space, of course).
+
+***
+
+## Installing libraries
 
 You must have installed **packages**:
-`python3`, `git`, `nasm`, `autoconf`, `automake`, `libtool`, `make`, `cmake`, `gcc`, `g++`.  
+`python3`, `git`, `nasm`, `autoconf`, `automake`, `libtool`, `make`, `cmake`, `gcc`, `g++`.
 
-Examples:
-* MSYS: `pacman -S python3 git nasm autoconf automake libtool make mingw-w64-i686-cmake mingw-w64-i686-gcc`  
-(not just cmake and gcc, only with i686!)
-* Debian-based OS: `apt-get install python3 git nasm autoconf automake libtool make cmake gcc g++`
+Example for Debian:  
+`apt-get install python3 git nasm autoconf automake libtool make cmake gcc g++`
 
 **If your OS is Linux**, you must also install:
-* for audio subsystem: `libasound-dev libpulse-dev`
+* for audio subsystem: `libasound2-dev libpulse-dev`
 * for window subsystem: `libdbus-1-dev libudev-dev libxrandr-dev libxcursor-dev libxxf86vm-dev libgl-dev`  
 (or just `xorg-dev`, but it is not only needed packages).
+
+**If your OS is Windows**:
+* select common `automake` - with unspecifed version,
+* make sure that you have `i686-pc-cygwin-g++` (compiler for 32-bit) after installing.
 
 ***
 
@@ -33,13 +37,14 @@ Examples:
 0. Make sure you have 1.5 GB of free space.
 
 
-1. Open shell (MSYS for Windows) and change dir to `scripts`:
+1. Open shell and change dir to `scripts`:
 ```
 $ cd Ren-Engine/libs/scripts
 ```
+Note: `C:/` in Cygwin is `/cygdrive/c/`.
 
 
-2. Check programs installed and libs ready to build:
+2. Check that the programs are installed and the libraries are ready to be built:
 ```
 $ ./check.py
 Ok.
@@ -53,11 +58,12 @@ $ ./progress.py
 ```
 
 
-4. Copy files (bash-scripts) for building libs:
+4. Copy files (bash-scripts) to building libs:
 ```
 $ ./copy_sh.py
 ```
-Here you can choose platform (x32 or x64, Linux only), enable/disable optimisations that makes building slower, etc...  
+Here you can choose platform (x32 or x64), enable/disable optimisations that makes building slower, etc...  
+Some options available only for Linux.  
 For the first time, it is recommended not to use optimizations, just to check for errors.
 
 
@@ -72,15 +78,14 @@ Ok!
 ```
 
 
-6. Copy include-files:
+5. Copy include-files:
 ```
 $ ./copy_incs.py
 ```
 This step is last, because some include-files generates in previous step `build` (substep `configure`).
 
 
-After building need dir (for example, `libs/win32/no_lto`) will contain built static-libs (`*.a`).  
-But python not built with MinGW, so uses dynamic std-version (`py_win32` contains it, will be auto copy).
+After building need dir (for example, `libs/win32/no_lto`) will contain built static-libs (`*.a`).
 
 ***
 
@@ -110,6 +115,5 @@ $ ./copy_sh.py
 # choose enable lto
 
 $ ./build.py
-
-# not need ./copy_incs.py, because include-files are common for lto and no_lto
 ```
+Not need `./copy_incs.py`, because include-files are common for `lto` and `no_lto`.

@@ -6,7 +6,6 @@ export CFLAGS="-O2 -flto"
 export LDFLAGS="-lm -flto"
 
 ./configure \
-	--target-os=mingw32 \
 	--cpu=I686 \
 	--enable-gpl --enable-version3 \
 	\

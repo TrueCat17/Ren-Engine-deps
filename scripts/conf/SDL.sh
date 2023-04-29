@@ -6,7 +6,6 @@ export CFLAGS="-O2 -flto"
 export LDFLAGS="-lm -flto"
 
 ./configure \
-	--host=mingw32 \
 	--enable-sse2 \
 	--disable-sse3 \
 	\

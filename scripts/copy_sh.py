@@ -39,10 +39,6 @@ def copy(cmd):
 		
 		content = content.replace('CC="gcc"', 'CC="' + cc + '"')
 		
-		if os.sys.platform not in ('win32', 'msys', 'msys2', 'cygwin'):
-			content = content.replace('--host=mingw32', '')
-			content = content.replace('--target-os=mingw32', '')
-		
 		if lto != 'enabled':
 			content = content.replace('--with-lto', '--without-lto')
 			content = content.replace('-flto', '')
@@ -92,7 +88,7 @@ def set_platform():
 	
 	else:
 		platform = 'win32'
-		cc = 'i686-w64-mingw32-gcc'
+		cc = 'i686-pc-cygwin-gcc'
 	
 	print('  platform  =', platform)
 	print('  compilier =', cc)
@@ -104,14 +100,16 @@ def set_platform():
 
 
 def set_lto():
-	print('2/5: LTO')
-	print('Link Time Optimization make building very slow.')
-	
 	global lto
-	if input('Input 1 for enable LTO: ') == '1':
-		lto = 'enabled'
+	lto = 'disabled'
+	
+	print('2/5: LTO')
+	if platform == 'win32':
+		print('Disabled for win32')
 	else:
-		lto = 'disabled'
+		print('Link Time Optimization make building very slow.')
+		if input('Input 1 for enable LTO: ') == '1':
+			lto = 'enabled'
 	
 	global path
 	path = platform + '/' + ('lto' if lto == 'enabled' else 'no_lto')
