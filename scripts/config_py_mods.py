@@ -9,6 +9,7 @@ libs_on = [
 	'math', '_struct', '_random', '_pickle',
 	'_sha256', '_sha512', 'binascii', 'unicodedata',
 	'zlib', 'select', 'fcntl', '_socket', 'array',
+	'_posixsubprocess',
 ]
 libs_off = ['pwd', '_ssl', '_md5']
 
