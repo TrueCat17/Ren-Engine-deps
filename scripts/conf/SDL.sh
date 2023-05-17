@@ -5,12 +5,20 @@ export CC="gcc"
 export CFLAGS="-O2 -flto"
 export LDFLAGS="-lm -flto"
 
+
+shared_static="--disable-shared --enable-static"
+if [[ `echo $(uname -a) | tr '[A-Z]' '[a-z]'` =~ "cygwin" ]]; then
+	CC="i686-w64-mingw32-gcc" # cygwin-SDL crashes on using opengl, use mingw
+	shared_static="--enable-shared --disable-static" # mingw static lib is unsupported by cygwin => make shared
+	LDFLAGS="$LDFLAGS -Wl,-s"
+fi
+
+
 ./configure \
 	--enable-sse2 \
 	--disable-sse3 \
 	\
-	--enable-static \
-	--disable-shared \
+	$shared_static \
 	\
 	--disable-joystick \
 	--disable-haptic \
@@ -36,7 +44,6 @@ export LDFLAGS="-lm -flto"
 	--disable-video-opengles1 \
 	--disable-video-opengles2 \
 	\
-	--disable-video-x11-xinerama \
 	--disable-video-x11-xdbe \
 	\
 	--disable-rpath \
