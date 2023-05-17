@@ -27,6 +27,7 @@ Example for Debian:
 (or just `xorg-dev`, but it is not only needed packages).
 
 **If your OS is Windows**:
+* additionally install `mingw64-i686-gcc-core`,
 * select common `automake` - with unspecifed version,
 * make sure that you have `i686-pc-cygwin-g++` (compiler for 32-bit) after installing.
 
