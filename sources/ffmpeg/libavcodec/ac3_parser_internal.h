@@ -60,6 +60,7 @@ typedef struct AC3HeaderInfo {
     uint8_t channels;
     uint16_t frame_size;
     uint64_t channel_layout;
+    int8_t ac3_bit_rate_code;
     /** @} */
 } AC3HeaderInfo;
 
@@ -77,5 +78,7 @@ int ff_ac3_parse_header(GetBitContext *gbc, AC3HeaderInfo *hdr);
 
 int avpriv_ac3_parse_header(AC3HeaderInfo **hdr, const uint8_t *buf,
                             size_t size);
+
+int ff_ac3_find_syncword(const uint8_t *buf, int buf_size);
 
 #endif /* AVCODEC_AC3_PARSER_INTERNAL_H */

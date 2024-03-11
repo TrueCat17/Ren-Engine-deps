@@ -18,6 +18,8 @@ fi
 	--enable-sse2 \
 	--disable-sse3 \
 	\
+	--libdir="$PWD/build/.libs" \
+	\
 	$shared_static \
 	\
 	--disable-joystick \

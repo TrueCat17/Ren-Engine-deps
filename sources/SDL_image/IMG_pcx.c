@@ -1,6 +1,6 @@
 /*
   SDL_image:  An example image loading library for use with SDL
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -227,13 +227,14 @@ SDL_Surface *IMG_LoadPCX_RW(SDL_RWops *src)
                 Uint8 *dst = row + plane;
                 Uint8 *end2= row + surface->pitch;
                 for ( x = 0; x < width; x++ ) {
-                    if ( innerSrc >= end1 || dst >= end2 ) {
+                    if ( (innerSrc + x) >= end1 || dst >= end2 ) {
                         error = "decoding out of bounds (corrupt?)";
                         goto done;
                     }
-                    *dst = *innerSrc++;
+                    *dst = innerSrc[x];
                     dst += pcxh.NPlanes;
                 }
+                innerSrc += pcxh.BytesPerLine;
             }
         }
 

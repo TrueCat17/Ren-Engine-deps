@@ -22,6 +22,7 @@
 #include "config.h"
 #include "config_components.h"
 
+#include <time.h>
 #if CONFIG_ZLIB
 #include <zlib.h>
 #endif /* CONFIG_ZLIB */
@@ -29,6 +30,7 @@
 #include "libavutil/avassert.h"
 #include "libavutil/avstring.h"
 #include "libavutil/bprint.h"
+#include "libavutil/getenv_utf8.h"
 #include "libavutil/opt.h"
 #include "libavutil/time.h"
 #include "libavutil/parseutils.h"
@@ -40,6 +42,7 @@
 #include "network.h"
 #include "os_support.h"
 #include "url.h"
+#include "version.h"
 
 /* XXX: POST protocol is not completely implemented because ffmpeg uses
  * only a subset of it. */
@@ -158,9 +161,9 @@ static const AVOption options[] = {
     { "icy_metadata_headers", "return ICY metadata headers", OFFSET(icy_metadata_headers), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, AV_OPT_FLAG_EXPORT },
     { "icy_metadata_packet", "return current ICY metadata packet", OFFSET(icy_metadata_packet), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, AV_OPT_FLAG_EXPORT },
     { "metadata", "metadata read from the bitstream", OFFSET(metadata), AV_OPT_TYPE_DICT, {0}, 0, 0, AV_OPT_FLAG_EXPORT },
-    { "auth_type", "HTTP authentication type", OFFSET(auth_state.auth_type), AV_OPT_TYPE_INT, { .i64 = HTTP_AUTH_NONE }, HTTP_AUTH_NONE, HTTP_AUTH_BASIC, D | E, "auth_type"},
-    { "none", "No auth method set, autodetect", 0, AV_OPT_TYPE_CONST, { .i64 = HTTP_AUTH_NONE }, 0, 0, D | E, "auth_type"},
-    { "basic", "HTTP basic authentication", 0, AV_OPT_TYPE_CONST, { .i64 = HTTP_AUTH_BASIC }, 0, 0, D | E, "auth_type"},
+    { "auth_type", "HTTP authentication type", OFFSET(auth_state.auth_type), AV_OPT_TYPE_INT, { .i64 = HTTP_AUTH_NONE }, HTTP_AUTH_NONE, HTTP_AUTH_BASIC, D | E, .unit = "auth_type"},
+    { "none", "No auth method set, autodetect", 0, AV_OPT_TYPE_CONST, { .i64 = HTTP_AUTH_NONE }, 0, 0, D | E, .unit = "auth_type"},
+    { "basic", "HTTP basic authentication", 0, AV_OPT_TYPE_CONST, { .i64 = HTTP_AUTH_BASIC }, 0, 0, D | E, .unit = "auth_type"},
     { "send_expect_100", "Force sending an Expect: 100-continue header for POST", OFFSET(send_expect_100), AV_OPT_TYPE_BOOL, { .i64 = -1 }, -1, 1, E },
     { "location", "The actual location of the data received", OFFSET(location), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, D | E },
     { "offset", "initial byte offset", OFFSET(off), AV_OPT_TYPE_INT64, { .i64 = 0 }, 0, INT64_MAX, D },
@@ -198,12 +201,13 @@ void ff_http_init_auth_state(URLContext *dest, const URLContext *src)
 static int http_open_cnx_internal(URLContext *h, AVDictionary **options)
 {
     const char *path, *proxy_path, *lower_proto = "tcp", *local_path;
+    char *env_http_proxy, *env_no_proxy;
     char *hashmark;
     char hostname[1024], hoststr[1024], proto[10];
     char auth[1024], proxyauth[1024] = "";
     char path1[MAX_URL_SIZE], sanitized_path[MAX_URL_SIZE + 1];
     char buf[1024], urlbuf[MAX_URL_SIZE];
-    int port, use_proxy, err;
+    int port, use_proxy, err = 0;
     HTTPContext *s = h->priv_data;
 
     av_url_split(proto, sizeof(proto), auth, sizeof(auth),
@@ -211,9 +215,13 @@ static int http_open_cnx_internal(URLContext *h, AVDictionary **options)
                  path1, sizeof(path1), s->location);
     ff_url_join(hoststr, sizeof(hoststr), NULL, NULL, hostname, port, NULL);
 
-    proxy_path = s->http_proxy ? s->http_proxy : getenv("http_proxy");
-    use_proxy  = !ff_http_match_no_proxy(getenv("no_proxy"), hostname) &&
+    env_http_proxy = getenv_utf8("http_proxy");
+    proxy_path = s->http_proxy ? s->http_proxy : env_http_proxy;
+
+    env_no_proxy = getenv_utf8("no_proxy");
+    use_proxy  = !ff_http_match_no_proxy(env_no_proxy, hostname) &&
                  proxy_path && av_strstart(proxy_path, "http://", NULL);
+    freeenv_utf8(env_no_proxy);
 
     if (!strcmp(proto, "https")) {
         lower_proto = "tls";
@@ -224,7 +232,7 @@ static int http_open_cnx_internal(URLContext *h, AVDictionary **options)
         if (s->http_proxy) {
             err = av_dict_set(options, "http_proxy", s->http_proxy, 0);
             if (err < 0)
-                return err;
+                goto end;
         }
     }
     if (port < 0)
@@ -259,12 +267,12 @@ static int http_open_cnx_internal(URLContext *h, AVDictionary **options)
         err = ffurl_open_whitelist(&s->hd, buf, AVIO_FLAG_READ_WRITE,
                                    &h->interrupt_callback, options,
                                    h->protocol_whitelist, h->protocol_blacklist, h);
-        if (err < 0)
-            return err;
     }
 
-    return http_connect(h, path, local_path, hoststr,
-                        auth, proxyauth);
+end:
+    freeenv_utf8(env_http_proxy);
+    return err < 0 ? err : http_connect(
+        h, path, local_path, hoststr, auth, proxyauth);
 }
 
 static int http_should_reconnect(HTTPContext *s, int err)
@@ -1014,11 +1022,11 @@ static int parse_cookie(HTTPContext *s, const char *p, AVDictionary **cookies)
 
 static int cookie_string(AVDictionary *dict, char **cookies)
 {
-    AVDictionaryEntry *e = NULL;
+    const AVDictionaryEntry *e = NULL;
     int len = 1;
 
     // determine how much memory is needed for the cookies string
-    while (e = av_dict_get(dict, "", e, AV_DICT_IGNORE_SUFFIX))
+    while ((e = av_dict_iterate(dict, e)))
         len += strlen(e->key) + strlen(e->value) + 1;
 
     // reallocate the cookies
@@ -1029,7 +1037,7 @@ static int cookie_string(AVDictionary *dict, char **cookies)
     *cookies[0] = '\0';
 
     // write out the cookies
-    while (e = av_dict_get(dict, "", e, AV_DICT_IGNORE_SUFFIX))
+    while ((e = av_dict_iterate(dict, e)))
         av_strlcatf(*cookies, len, "%s%s\n", e->key, e->value);
 
     return 0;
@@ -1198,7 +1206,7 @@ static int process_line(URLContext *h, char *line, int line_count)
             }
         } else if (!av_strcasecmp(tag, "Content-Type")) {
             av_free(s->mime_type);
-            s->mime_type = av_strdup(p);
+            s->mime_type = av_get_token((const char **)&p, ";");
         } else if (!av_strcasecmp(tag, "Set-Cookie")) {
             if (parse_cookie(s, p, &s->cookie_dict))
                 av_log(h, AV_LOG_WARNING, "Unable to parse '%s'\n", p);
@@ -1286,9 +1294,9 @@ static int get_cookies(HTTPContext *s, char **cookies, const char *path,
                 goto skip_cookie;
         }
 
-        // ensure this cookie matches the path
+        // if a cookie path is provided, ensure the request path is within that path
         e = av_dict_get(cookie_params, "path", NULL, 0);
-        if (!e || av_strncasecmp(path, e->value, strlen(e->value)))
+        if (e && av_strncasecmp(path, e->value, strlen(e->value)))
             goto skip_cookie;
 
         // cookie parameters match, so copy the value

@@ -7,7 +7,7 @@ FREETYPE_DIR="freetype-2.10.1"
 export CC="gcc"
 export CFLAGS="-O2 -flto -I$PWD/../$SDL_DIR/include -I$PWD/../$FREETYPE_DIR/include"
 export LDFLAGS="-lm -flto"
-export LIBS="-L$PWD/../000res/ -lfreetype -lbrotlidec-static -lbrotlicommon-static -lz"
+export LIBS="-L$PWD/../000res/ -lfreetype -lbrotlidec -lbrotlicommon -lz"
 
 export SDL2_CONFIG="$PWD/../$SDL_DIR/sdl2-config"
 

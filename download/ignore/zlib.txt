@@ -1,5 +1,8 @@
+/doc/
 /test/
 !/test/fuzz/
 !/test/example.c
 !/test/minigzip.c
 !/test/Makefile.in
+!/test/test_shared.h
+!/test/test_shared_ng.h

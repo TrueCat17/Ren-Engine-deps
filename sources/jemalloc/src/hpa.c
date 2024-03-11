@@ -12,7 +12,8 @@ static edata_t *hpa_alloc(tsdn_t *tsdn, pai_t *self, size_t size,
     size_t alignment, bool zero, bool guarded, bool frequent_reuse,
     bool *deferred_work_generated);
 static size_t hpa_alloc_batch(tsdn_t *tsdn, pai_t *self, size_t size,
-    size_t nallocs, edata_list_active_t *results, bool *deferred_work_generated);
+    size_t nallocs, edata_list_active_t *results, bool frequent_reuse,
+    bool *deferred_work_generated);
 static bool hpa_expand(tsdn_t *tsdn, pai_t *self, edata_t *edata,
     size_t old_size, size_t new_size, bool zero, bool *deferred_work_generated);
 static bool hpa_shrink(tsdn_t *tsdn, pai_t *self, edata_t *edata,
@@ -24,7 +25,7 @@ static void hpa_dalloc_batch(tsdn_t *tsdn, pai_t *self,
 static uint64_t hpa_time_until_deferred_work(tsdn_t *tsdn, pai_t *self);
 
 bool
-hpa_supported() {
+hpa_supported(void) {
 #ifdef _WIN32
 	/*
 	 * At least until the API and implementation is somewhat settled, we
@@ -68,11 +69,7 @@ hpa_central_init(hpa_central_t *central, base_t *base, const hpa_hooks_t *hooks)
 	if (err) {
 		return true;
 	}
-	err = malloc_mutex_init(&central->mtx, "hpa_central",
-	    WITNESS_RANK_HPA_CENTRAL, malloc_mutex_rank_exclusive);
-	if (err) {
-		return true;
-	}
+
 	central->base = base;
 	central->eden = NULL;
 	central->eden_len = 0;
@@ -87,7 +84,7 @@ hpa_alloc_ps(tsdn_t *tsdn, hpa_central_t *central) {
 	    CACHELINE);
 }
 
-hpdata_t *
+static hpdata_t *
 hpa_central_extract(tsdn_t *tsdn, hpa_central_t *central, size_t size,
     bool *oom) {
 	/* Don't yet support big allocations; these should get filtered out. */
@@ -647,7 +644,9 @@ static size_t
 hpa_alloc_batch_psset(tsdn_t *tsdn, hpa_shard_t *shard, size_t size,
     size_t nallocs, edata_list_active_t *results,
     bool *deferred_work_generated) {
-	assert(size <= shard->opts.slab_max_alloc);
+	assert(size <= HUGEPAGE);
+	assert(size <= shard->opts.slab_max_alloc ||
+	    size == sz_index2size(sz_size2index(size)));
 	bool oom = false;
 
 	size_t nsuccess = hpa_try_alloc_batch_no_grow(tsdn, shard, size, &oom,
@@ -707,23 +706,35 @@ hpa_alloc_batch_psset(tsdn_t *tsdn, hpa_shard_t *shard, size_t size,
 
 static hpa_shard_t *
 hpa_from_pai(pai_t *self) {
-	assert(self->alloc = &hpa_alloc);
-	assert(self->expand = &hpa_expand);
-	assert(self->shrink = &hpa_shrink);
-	assert(self->dalloc = &hpa_dalloc);
+	assert(self->alloc == &hpa_alloc);
+	assert(self->expand == &hpa_expand);
+	assert(self->shrink == &hpa_shrink);
+	assert(self->dalloc == &hpa_dalloc);
 	return (hpa_shard_t *)self;
 }
 
 static size_t
 hpa_alloc_batch(tsdn_t *tsdn, pai_t *self, size_t size, size_t nallocs,
-    edata_list_active_t *results, bool *deferred_work_generated) {
+    edata_list_active_t *results, bool frequent_reuse,
+    bool *deferred_work_generated) {
 	assert(nallocs > 0);
 	assert((size & PAGE_MASK) == 0);
 	witness_assert_depth_to_rank(tsdn_witness_tsdp_get(tsdn),
 	    WITNESS_RANK_CORE, 0);
 	hpa_shard_t *shard = hpa_from_pai(self);
 
-	if (size > shard->opts.slab_max_alloc) {
+	/*
+	 * frequent_use here indicates this request comes from the arena bins,
+	 * in which case it will be split into slabs, and therefore there is no
+	 * intrinsic slack in the allocation (the entire range of allocated size
+	 * will be accessed).
+	 *
+	 * In this case bypass the slab_max_alloc limit (if still within the
+	 * huge page size).  These requests do not concern internal
+	 * fragmentation with huge pages (again, the full size will be used).
+	 */
+	if (!(frequent_reuse && size <= HUGEPAGE) &&
+	    (size > shard->opts.slab_max_alloc)) {
 		return 0;
 	}
 
@@ -775,7 +786,7 @@ hpa_alloc(tsdn_t *tsdn, pai_t *self, size_t size, size_t alignment, bool zero,
 	edata_list_active_t results;
 	edata_list_active_init(&results);
 	size_t nallocs = hpa_alloc_batch(tsdn, self, size, /* nallocs */ 1,
-	    &results, deferred_work_generated);
+	    &results, frequent_reuse, deferred_work_generated);
 	assert(nallocs == 0 || nallocs == 1);
 	edata_t *edata = edata_list_active_first(&results);
 	return edata;

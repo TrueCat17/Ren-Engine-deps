@@ -1,6 +1,6 @@
 /*
   SDL_image:  An example image loading library for use with SDL
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -603,7 +603,7 @@ static int IMG_SavePNG_RW_libpng(SDL_Surface *surface, SDL_RWops *dst, int freed
             int i;
             int last_transparent = -1;
 
-            color_ptr = (png_colorp)SDL_malloc(sizeof(png_colorp) * ncolors);
+            color_ptr = (png_colorp)SDL_malloc(sizeof(png_color) * ncolors);
             if (color_ptr == NULL)
             {
                 lib.png_destroy_write_struct(&png_ptr, &info_ptr);
@@ -629,9 +629,18 @@ static int IMG_SavePNG_RW_libpng(SDL_Surface *surface, SDL_RWops *dst, int freed
             }
         }
         else if (surface->format->format == SDL_PIXELFORMAT_RGB24) {
+            /* If the surface is exactly the right RGB format it is just passed through */
             png_color_type = PNG_COLOR_TYPE_RGB;
         }
+        else if (!SDL_ISPIXELFORMAT_ALPHA(surface->format->format)) {
+            /* If the surface is not exactly the right RGB format but does not have alpha
+               information, it should be converted to RGB24 before being passed through */
+            png_color_type = PNG_COLOR_TYPE_RGB;
+            source = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGB24, 0);
+        }
         else if (surface->format->format != png_format) {
+            /* Otherwise, (surface has alpha data), and it is not in the exact right
+               format , so it should be converted to that */
             source = SDL_ConvertSurfaceFormat(surface, png_format, 0);
         }
 
@@ -647,6 +656,7 @@ static int IMG_SavePNG_RW_libpng(SDL_Surface *surface, SDL_RWops *dst, int freed
 
             row_pointers = (png_bytep *) SDL_malloc(sizeof(png_bytep) * source->h);
             if (!row_pointers) {
+                SDL_free(color_ptr);
                 lib.png_destroy_write_struct(&png_ptr, &info_ptr);
                 IMG_SetError("Out of memory");
                 return -1;
@@ -695,6 +705,8 @@ static int IMG_SavePNG_RW_libpng(SDL_Surface *surface, SDL_RWops *dst, int freed
 #else
 #define MINIZ_LITTLE_ENDIAN 0
 #endif
+#define MINIZ_USE_UNALIGNED_LOADS_AND_STORES 0
+#define MINIZ_SDL_NOUNUSED
 #include "miniz.h"
 
 static int IMG_SavePNG_RW_miniz(SDL_Surface *surface, SDL_RWops *dst, int freedst)
@@ -718,7 +730,7 @@ static int IMG_SavePNG_RW_miniz(SDL_Surface *surface, SDL_RWops *dst, int freeds
             if (SDL_RWwrite(dst, png, size, 1)) {
                 result = 0;
             }
-            SDL_free(png);
+            mz_free(png); /* calls SDL_free() */
         } else {
             IMG_SetError("Failed to convert and save image");
         }

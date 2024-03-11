@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,7 +25,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
 #include "../SDL_egl_c.h"
 #endif
 
@@ -40,7 +40,10 @@ typedef enum
 } PendingWindowOperation;
 
 @interface Cocoa_WindowListener : NSResponder <NSWindowDelegate> {
-    SDL_WindowData *_data;
+    /* SDL_WindowData owns this Listener and has a strong reference to it.
+     * To avoid reference cycles, we could have either a weak or an
+     * unretained ref to the WindowData. */
+    __weak SDL_WindowData *_data;
     BOOL observingVisible;
     BOOL wasCtrlLeft;
     BOOL wasVisible;
@@ -53,6 +56,7 @@ typedef enum
     BOOL isDragAreaRunning;
 }
 
+-(BOOL) isTouchFromTrackpad:(NSEvent *)theEvent;
 -(void) listen:(SDL_WindowData *) data;
 -(void) pauseVisibleObservation;
 -(void) resumeVisibleObservation;
@@ -81,6 +85,7 @@ typedef enum
 -(void) windowDidResignKey:(NSNotification *) aNotification;
 -(void) windowDidChangeBackingProperties:(NSNotification *) aNotification;
 -(void) windowDidChangeScreenProfile:(NSNotification *) aNotification;
+-(void) windowDidChangeScreen:(NSNotification *) aNotification;
 -(void) windowWillEnterFullScreen:(NSNotification *) aNotification;
 -(void) windowDidEnterFullScreen:(NSNotification *) aNotification;
 -(void) windowWillExitFullScreen:(NSNotification *) aNotification;
@@ -123,10 +128,11 @@ typedef enum
     @property (nonatomic) NSMutableArray *nscontexts;
     @property (nonatomic) SDL_bool created;
     @property (nonatomic) SDL_bool inWindowFullscreenTransition;
+    @property (nonatomic) NSInteger window_number;
     @property (nonatomic) NSInteger flash_request;
     @property (nonatomic) Cocoa_WindowListener *listener;
     @property (nonatomic) SDL_VideoData *videodata;
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
     @property (nonatomic) EGLSurface egl_surface;
 #endif
 @end
@@ -140,6 +146,7 @@ extern void Cocoa_SetWindowPosition(_THIS, SDL_Window * window);
 extern void Cocoa_SetWindowSize(_THIS, SDL_Window * window);
 extern void Cocoa_SetWindowMinimumSize(_THIS, SDL_Window * window);
 extern void Cocoa_SetWindowMaximumSize(_THIS, SDL_Window * window);
+extern void Cocoa_GetWindowSizeInPixels(_THIS, SDL_Window * window, int *w, int *h);
 extern int Cocoa_SetWindowOpacity(_THIS, SDL_Window * window, float opacity);
 extern void Cocoa_ShowWindow(_THIS, SDL_Window * window);
 extern void Cocoa_HideWindow(_THIS, SDL_Window * window);

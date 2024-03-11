@@ -1,5 +1,5 @@
 /* inflate.h -- internal inflate state definition
- * Copyright (C) 1995-2016 Mark Adler
+ * Copyright (C) 1995-2019 Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -11,7 +11,7 @@
 #ifndef INFLATE_H_
 #define INFLATE_H_
 
-#include "crc32_fold.h"
+#include "crc32.h"
 
 /* define NO_GZIP when compiling if you want to disable gzip header and trailer decoding by inflate().
    NO_GZIP would be used to avoid linking in the crc code when it is not needed.
@@ -134,6 +134,6 @@ struct inflate_state {
 };
 
 int Z_INTERNAL PREFIX(inflate_ensure_window)(struct inflate_state *state);
-void Z_INTERNAL fixedtables(struct inflate_state *state);
+void Z_INTERNAL PREFIX(fixedtables)(struct inflate_state *state);
 
 #endif /* INFLATE_H_ */

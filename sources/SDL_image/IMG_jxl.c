@@ -1,6 +1,6 @@
 /*
   SDL_image:  An example image loading library for use with SDL
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -199,7 +199,11 @@ SDL_Surface *IMG_LoadJXL_RW(SDL_RWops *src)
                 SDL_OutOfMemory();
                 goto done;
             }
-            pitch = outputsize / info.ysize;
+            if ((outputsize / info.ysize) > SDL_MAX_SINT32) {
+                SDL_OutOfMemory();
+                goto done;
+            }
+            pitch = (int)(outputsize / info.ysize);
             if (lib.JxlDecoderSetImageOutBuffer(decoder, &format, pixels, outputsize) != JXL_DEC_SUCCESS) {
                 IMG_SetError("Couldn't set JXL output buffer");
                 goto done;

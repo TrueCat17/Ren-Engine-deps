@@ -18,6 +18,8 @@
         `FILEVERSION`, `PRODUCTVERSION`, `FileVersion`, `ProductVersion`
     * `VisualC/Version.rc`:
         `FILEVERSION`, `PRODUCTVERSION`, `FileVersion`, `ProductVersion`
+    * `Xcode/Info-Framework.plist`:
+        `CFBundleShortVersionString`, `CFBundleVersion`
 
 * Bump ABI version information
 
@@ -26,12 +28,11 @@
         * set first number in `DYLIB_CURRENT_VERSION` to
             (100 * *minor*) + 1
         * set second number in `DYLIB_CURRENT_VERSION` to 0
-        * if backwards compatibility has been broken,
-            increase `DYLIB_COMPATIBILITY_VERSION` (?)
-
-* Run `./test-versioning.sh` to verify that everything is consistent
+        * set `DYLIB_COMPATIBILITY_VERSION` to the same value
 
 * Regenerate `configure`
+
+* Run `./test-versioning.sh` to verify that everything is consistent
 
 * Do the release
 
@@ -47,13 +48,14 @@
 
 * Bump ABI version information
 
-    * `Xcode/SDL_ttf.xcodeproj/project.pbxproj`:
-        `DYLIB_CURRENT_VERSION`, `DYLIB_COMPATIBILITY_VERSION`
-        * set second number in `DYLIB_CURRENT_VERSION` to *patchlevel*
-
-* Run test/versioning.sh to verify that everything is consistent
+	* `Xcode/SDL_ttf.xcodeproj/project.pbxproj`:
+	  `DYLIB_CURRENT_VERSION`, `DYLIB_COMPATIBILITY_VERSION`
+		* set second number in `DYLIB_CURRENT_VERSION` to *patchlevel*
+        * Leave `DYLIB_COMPATIBILITY_VERSION` unchanged
 
 * Regenerate `configure`
+
+* Run test/versioning.sh to verify that everything is consistent
 
 * Do the release
 
@@ -72,6 +74,8 @@
 
 * Run test/versioning.sh to verify that everything is consistent
 
+* Add a new milestone for issues
+
 ## New development prerelease
 
 * Bump version number from 2.Y.Z to 2.Y.(Z+1) (Y is odd)
@@ -80,16 +84,15 @@
 
 * Bump ABI version information
 
-    * `Xcode/SDL_ttf.xcodeproj/project.pbxproj`:
-        `DYLIB_CURRENT_VERSION`, `DYLIB_COMPATIBILITY_VERSION`
-        * set first number in `DYLIB_CURRENT_VERSION` to
-            (100 * *minor*) + *patchlevel* + 1
-        * set second number in `DYLIB_CURRENT_VERSION` to 0
-        * if backwards compatibility has been broken,
-            increase `DYLIB_COMPATIBILITY_VERSION` (?)
-
-* Run test/versioning.sh to verify that everything is consistent
+	* `Xcode/SDL_ttf.xcodeproj/project.pbxproj`:
+	  `DYLIB_CURRENT_VERSION`, `DYLIB_COMPATIBILITY_VERSION`
+		* set first number in `DYLIB_CURRENT_VERSION` to
+		  (100 * *minor*) + *patchlevel* + 1
+		* set second number in `DYLIB_CURRENT_VERSION` to 0
+        * set `DYLIB_COMPATIBILITY_VERSION` to the same value
 
 * Regenerate `configure`
+
+* Run test/versioning.sh to verify that everything is consistent
 
 * Do the release

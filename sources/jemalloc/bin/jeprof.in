@@ -688,15 +688,15 @@ sub Main() {
   my $symbol_map = {};
 
   # Read one profile, pick the last item on the list
-  my $data = ReadProfile($main::prog, pop(@main::profile_files));
+  my $data = ReadProfile($main::prog, $main::profile_files[0]);
   my $profile = $data->{profile};
   my $pcs = $data->{pcs};
   my $libs = $data->{libs};   # Info about main program and shared libraries
   $symbol_map = MergeSymbols($symbol_map, $data->{symbols});
 
   # Add additional profiles, if available.
-  if (scalar(@main::profile_files) > 0) {
-    foreach my $pname (@main::profile_files) {
+  if (scalar(@main::profile_files) > 1) {
+    foreach my $pname (@main::profile_files[1..$#main::profile_files]) {
       my $data2 = ReadProfile($main::prog, $pname);
       $profile = AddProfile($profile, $data2->{profile});
       $pcs = AddPcs($pcs, $data2->{pcs});
@@ -2955,8 +2955,11 @@ sub RemoveUninterestingFrames {
     foreach my $name ('@JEMALLOC_PREFIX@calloc',
                       'cfree',
                       '@JEMALLOC_PREFIX@malloc',
+                      'je_malloc_default',
                       'newImpl',
                       'void* newImpl',
+                      'fallbackNewImpl',
+                      'void* fallbackNewImpl',
                       '@JEMALLOC_PREFIX@free',
                       '@JEMALLOC_PREFIX@memalign',
                       '@JEMALLOC_PREFIX@posix_memalign',
@@ -2966,6 +2969,7 @@ sub RemoveUninterestingFrames {
                       '@JEMALLOC_PREFIX@realloc',
                       '@JEMALLOC_PREFIX@mallocx',
                       '@JEMALLOC_PREFIX@rallocx',
+                      'do_rallocx',
                       '@JEMALLOC_PREFIX@xallocx',
                       '@JEMALLOC_PREFIX@dallocx',
                       '@JEMALLOC_PREFIX@sdallocx',
@@ -4500,19 +4504,19 @@ sub FindLibrary {
 # For libc libraries, the copy in /usr/lib/debug contains debugging symbols
 sub DebuggingLibrary {
   my $file = shift;
-      
+
   if ($file !~ m|^/|) {
     return undef;
   }
-      
+
   # Find debug symbol file if it's named after the library's name.
-  
-  if (-f "/usr/lib/debug$file") {                 
+
+  if (-f "/usr/lib/debug$file") {
     if($main::opt_debug) { print STDERR "found debug info for $file in /usr/lib/debug$file\n"; }
     return "/usr/lib/debug$file";
   } elsif (-f "/usr/lib/debug$file.debug") {
     if($main::opt_debug) { print STDERR "found debug info for $file in /usr/lib/debug$file.debug\n"; }
-    return "/usr/lib/debug$file.debug"; 
+    return "/usr/lib/debug$file.debug";
   }
 
   if(!$main::opt_debug_syms_by_id) {
@@ -4521,7 +4525,7 @@ sub DebuggingLibrary {
   }
 
   # Find debug file if it's named after the library's build ID.
-  
+
   my $readelf = '';
   if (!$main::gave_up_on_elfutils) {
     $readelf = qx/eu-readelf -n ${file}/;

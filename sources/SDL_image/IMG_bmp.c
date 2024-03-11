@@ -1,6 +1,6 @@
 /*
   SDL_image:  An example image loading library for use with SDL
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -122,9 +122,11 @@ LoadICOCUR_RW(SDL_RWops * src, int type, int freesrc)
     int bmpPitch;
     int i,j, pad;
     SDL_Surface *surface;
+    /*
     Uint32 Rmask;
     Uint32 Gmask;
     Uint32 Bmask;
+    */
     Uint8 *bits;
     int ExpandBMP;
     int maxCol = 0;
@@ -140,14 +142,16 @@ LoadICOCUR_RW(SDL_RWops * src, int type, int freesrc)
     Uint32 biSize;
     Sint32 biWidth;
     Sint32 biHeight;
-    Uint16 biPlanes;
+    /* Uint16 biPlanes; */
     Uint16 biBitCount;
     Uint32 biCompression;
+    /*
     Uint32 biSizeImage;
     Sint32 biXPelsPerMeter;
     Sint32 biYPelsPerMeter;
-    Uint32 biClrUsed;
     Uint32 biClrImportant;
+    */
+    Uint32 biClrUsed;
 
     /* Make sure we are passed a valid data source */
     surface = NULL;
@@ -176,12 +180,14 @@ LoadICOCUR_RW(SDL_RWops * src, int type, int freesrc)
         int bWidth = SDL_Read8(src);    /* Uint8, but 0 = 256 ! */
         int bHeight = SDL_Read8(src);   /* Uint8, but 0 = 256 ! */
         int bColorCount = SDL_Read8(src);       /* Uint8, but 0 = 256 ! */
-        /* Uint8 bReserved;
+        /*
+        Uint8 bReserved;
         Uint16 wPlanes;
         Uint16 wBitCount;
-        Uint32 dwBytesInRes; */
+        Uint32 dwBytesInRes;
+        */
         Uint32 dwImageOffset;
-        
+
         /* bReserved = */ SDL_Read8(src);
         /* wPlanes = */ SDL_ReadLE16(src);
         /* wBitCount = */ SDL_ReadLE16(src);
@@ -215,14 +221,14 @@ LoadICOCUR_RW(SDL_RWops * src, int type, int freesrc)
     if (biSize == 40) {
         biWidth = SDL_ReadLE32(src);
         biHeight = SDL_ReadLE32(src);
-        biPlanes = SDL_ReadLE16(src);
+        /* biPlanes = */ SDL_ReadLE16(src);
         biBitCount = SDL_ReadLE16(src);
         biCompression = SDL_ReadLE32(src);
-        biSizeImage = SDL_ReadLE32(src);
-        biXPelsPerMeter = SDL_ReadLE32(src);
-        biYPelsPerMeter = SDL_ReadLE32(src);
+        /* biSizeImage = */ SDL_ReadLE32(src);
+        /* biXPelsPerMeter = */ SDL_ReadLE32(src);
+        /* biYPelsPerMeter = */ SDL_ReadLE32(src);
         biClrUsed = SDL_ReadLE32(src);
-        biClrImportant = SDL_ReadLE32(src);
+        /* biClrImportant = */ SDL_ReadLE32(src);
     } else {
         IMG_SetError("Unsupported ICO bitmap format");
         was_error = SDL_TRUE;
@@ -243,7 +249,6 @@ LoadICOCUR_RW(SDL_RWops * src, int type, int freesrc)
         case 1:
         case 4:
             ExpandBMP = biBitCount;
-            biBitCount = 8;
             break;
         case 8:
             ExpandBMP = 8;
@@ -252,9 +257,11 @@ LoadICOCUR_RW(SDL_RWops * src, int type, int freesrc)
             ExpandBMP = 24;
             break;
         case 32:
+            /*
             Rmask = 0x00FF0000;
             Gmask = 0x0000FF00;
             Bmask = 0x000000FF;
+            */
             ExpandBMP = 0;
             break;
         default:
@@ -357,7 +364,7 @@ LoadICOCUR_RW(SDL_RWops * src, int type, int freesrc)
                 for (i = 0; i < surface->w; ++i) {
                     pixel = 0;
                     for (j = 0; j < 3; ++j) {
-                        //Load each color channel into pixel
+                        /* Load each color channel into pixel */
                         if (!SDL_RWread(src, &channel, 1, 1)) {
                             IMG_SetError("Error reading from ICO");
                             was_error = SDL_TRUE;
@@ -451,6 +458,7 @@ SDL_Surface *IMG_LoadCUR_RW(SDL_RWops *src)
 }
 
 #else
+
 #if _MSC_VER >= 1300
 #pragma warning(disable : 4100) /* warning C4100: 'op' : unreferenced formal parameter */
 #endif

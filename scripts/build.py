@@ -37,13 +37,6 @@ for i in range(len(progress_list)):
 		progress_list[i] = lib, 'configurated'
 		write_progress(progress_list)
 	
-	
-	if lib == 'cpython':
-		print('  config py-modules')
-		error = os.system(scripts_path + '/config_py_mods.py')
-		if error:
-			print('Error?! See scripts/config_py_mods.py')
-			os.sys.exit(1)
 	if lib == 'ffmpeg':
 		print('  disable bcrypt')
 		lines = []

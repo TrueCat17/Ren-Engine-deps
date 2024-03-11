@@ -26,6 +26,7 @@
 bool opt_prof = false;
 bool opt_prof_active = true;
 bool opt_prof_thread_active_init = true;
+unsigned opt_prof_bt_max = PROF_BT_MAX_DEFAULT;
 size_t opt_lg_prof_sample = LG_PROF_SAMPLE_DEFAULT;
 ssize_t opt_lg_prof_interval = LG_PROF_INTERVAL_DEFAULT;
 bool opt_prof_gdump = false;
@@ -72,10 +73,16 @@ static malloc_mutex_t next_thr_uid_mtx;
 bool prof_booted = false;
 
 /* Logically a prof_backtrace_hook_t. */
-atomic_p_t prof_backtrace_hook;
+static atomic_p_t prof_backtrace_hook;
 
 /* Logically a prof_dump_hook_t. */
-atomic_p_t prof_dump_hook;
+static atomic_p_t prof_dump_hook;
+
+/* Logically a prof_sample_hook_t. */
+static atomic_p_t prof_sample_hook;
+
+/* Logically a prof_sample_free_hook_t. */
+static atomic_p_t prof_sample_free_hook;
 
 /******************************************************************************/
 
@@ -84,11 +91,19 @@ prof_alloc_rollback(tsd_t *tsd, prof_tctx_t *tctx) {
 	cassert(config_prof);
 
 	if (tsd_reentrancy_level_get(tsd) > 0) {
-		assert((uintptr_t)tctx == (uintptr_t)1U);
+		assert(tctx == PROF_TCTX_SENTINEL);
 		return;
 	}
 
-	if ((uintptr_t)tctx > (uintptr_t)1U) {
+	if (prof_tctx_is_valid(tctx)) {
+		/*
+		 * This `assert` really shouldn't be necessary. It's here
+		 * because there's a bug in the clang static analyzer; it
+		 * somehow does not realize that by `prof_tctx_is_valid(tctx)`
+		 * being true that we've already ensured that `tctx` is not
+		 * `NULL`.
+		 */
+		assert(tctx != NULL);
 		malloc_mutex_lock(tsd_tsdn(tsd), tctx->tdata->lock);
 		tctx->prepared = false;
 		prof_tctx_try_destroy(tsd, tctx);
@@ -144,17 +159,37 @@ prof_malloc_sample_object(tsd_t *tsd, const void *ptr, size_t size,
 	if (opt_prof_stats) {
 		prof_stats_inc(tsd, szind, size);
 	}
+
+	/* Sample hook. */
+	prof_sample_hook_t prof_sample_hook = prof_sample_hook_get();
+	if (prof_sample_hook != NULL) {
+		prof_bt_t *bt = &tctx->gctx->bt;
+		pre_reentrancy(tsd, NULL);
+		prof_sample_hook(ptr, size, bt->vec, bt->len);
+		post_reentrancy(tsd);
+	}
 }
 
 void
-prof_free_sampled_object(tsd_t *tsd, size_t usize, prof_info_t *prof_info) {
+prof_free_sampled_object(tsd_t *tsd, const void *ptr, size_t usize,
+    prof_info_t *prof_info) {
 	cassert(config_prof);
 
 	assert(prof_info != NULL);
 	prof_tctx_t *tctx = prof_info->alloc_tctx;
-	assert((uintptr_t)tctx > (uintptr_t)1U);
+	assert(prof_tctx_is_valid(tctx));
 
 	szind_t szind = sz_size2index(usize);
+
+	/* Unsample hook. */
+	prof_sample_free_hook_t prof_sample_free_hook =
+	    prof_sample_free_hook_get();
+	if (prof_sample_free_hook != NULL) {
+		pre_reentrancy(tsd, NULL);
+		prof_sample_free_hook(ptr, usize);
+		post_reentrancy(tsd);
+	}
+
 	malloc_mutex_lock(tsd_tsdn(tsd), tctx->tdata->lock);
 
 	assert(tctx->cnts.curobjs > 0);
@@ -242,7 +277,8 @@ prof_sample_new_event_wait(tsd_t *tsd) {
 	 * otherwise bytes_until_sample would be 0 if u is exactly 1.0.
 	 */
 	uint64_t r = prng_lg_range_u64(tsd_prng_statep_get(tsd), 53);
-	double u = (r == 0U) ? 1.0 : (double)r * (1.0/9007199254740992.0L);
+	double u = (r == 0U) ? 1.0 : (double)((long double)r *
+	    (1.0L/9007199254740992.0L));
 	return (uint64_t)(log(u) /
 	    log(1.0 - (1.0 / (double)((uint64_t)1U << lg_prof_sample))))
 	    + (uint64_t)1U;
@@ -388,11 +424,14 @@ prof_tdata_t *
 prof_tdata_reinit(tsd_t *tsd, prof_tdata_t *tdata) {
 	uint64_t thr_uid = tdata->thr_uid;
 	uint64_t thr_discrim = tdata->thr_discrim + 1;
-	char *thread_name = (tdata->thread_name != NULL) ?
-	    prof_thread_name_alloc(tsd, tdata->thread_name) : NULL;
 	bool active = tdata->active;
 
+	/* Keep a local copy of the thread name, before detaching. */
+	prof_thread_name_assert(tdata);
+	char thread_name[PROF_THREAD_NAME_MAX_LEN];
+	strncpy(thread_name, tdata->thread_name, PROF_THREAD_NAME_MAX_LEN);
 	prof_tdata_detach(tsd, tdata);
+
 	return prof_tdata_init_impl(tsd, thr_uid, thr_discrim, thread_name,
 	    active);
 }
@@ -437,15 +476,15 @@ prof_active_set(tsdn_t *tsdn, bool active) {
 
 const char *
 prof_thread_name_get(tsd_t *tsd) {
+	static const char *prof_thread_name_dummy = "";
+
 	assert(tsd_reentrancy_level_get(tsd) == 0);
-
-	prof_tdata_t *tdata;
-
-	tdata = prof_tdata_get(tsd, true);
+	prof_tdata_t *tdata = prof_tdata_get(tsd, true);
 	if (tdata == NULL) {
-		return "";
+		return prof_thread_name_dummy;
 	}
-	return (tdata->thread_name != NULL ? tdata->thread_name : "");
+
+	return tdata->thread_name;
 }
 
 int
@@ -532,7 +571,7 @@ prof_backtrace_hook_set(prof_backtrace_hook_t hook) {
 }
 
 prof_backtrace_hook_t
-prof_backtrace_hook_get() {
+prof_backtrace_hook_get(void) {
 	return (prof_backtrace_hook_t)atomic_load_p(&prof_backtrace_hook,
 	    ATOMIC_ACQUIRE);
 }
@@ -543,8 +582,30 @@ prof_dump_hook_set(prof_dump_hook_t hook) {
 }
 
 prof_dump_hook_t
-prof_dump_hook_get() {
+prof_dump_hook_get(void) {
 	return (prof_dump_hook_t)atomic_load_p(&prof_dump_hook,
+	    ATOMIC_ACQUIRE);
+}
+
+void
+prof_sample_hook_set(prof_sample_hook_t hook) {
+	atomic_store_p(&prof_sample_hook, hook, ATOMIC_RELEASE);
+}
+
+prof_sample_hook_t
+prof_sample_hook_get(void) {
+	return (prof_sample_hook_t)atomic_load_p(&prof_sample_hook,
+	    ATOMIC_ACQUIRE);
+}
+
+void
+prof_sample_free_hook_set(prof_sample_free_hook_t hook) {
+	atomic_store_p(&prof_sample_free_hook, hook, ATOMIC_RELEASE);
+}
+
+prof_sample_free_hook_t
+prof_sample_free_hook_get(void) {
+	return (prof_sample_free_hook_t)atomic_load_p(&prof_sample_free_hook,
 	    ATOMIC_ACQUIRE);
 }
 

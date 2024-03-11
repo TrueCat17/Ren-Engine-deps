@@ -7,6 +7,6 @@ freetype:   https://github.com/freetype/freetype.git
 libjpeg:    https://github.com/libjpeg-turbo/libjpeg-turbo.git
 libpng:     https://github.com/glennrp/libpng.git
 libwebp:    https://github.com/webmproject/libwebp.git
-SDL:        https://github.com/libsdl-org/SDL.git
-SDL_image:  https://github.com/libsdl-org/SDL_image.git
-SDL_ttf:    https://github.com/libsdl-org/SDL_ttf.git
+SDL:        https://github.com/libsdl-org/SDL.git --branch release-2.30.x
+SDL_image:  https://github.com/libsdl-org/SDL_image.git --branch release-2.6.x
+SDL_ttf:    https://github.com/libsdl-org/SDL_ttf.git --branch release-2.22.x

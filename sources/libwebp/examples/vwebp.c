@@ -292,6 +292,19 @@ static void PrintString(const char* const text) {
   }
 }
 
+static void PrintStringW(const char* const text) {
+#if defined(_WIN32) && defined(_UNICODE)
+  void* const font = GLUT_BITMAP_9_BY_15;
+  const W_CHAR* const wtext = (const W_CHAR*)text;
+  int i;
+  for (i = 0; wtext[i]; ++i) {
+    glutBitmapCharacter(font, wtext[i]);
+  }
+#else
+  PrintString(text);
+#endif
+}
+
 static float GetColorf(uint32_t color, int shift) {
   return ((color >> shift) & 0xff) / 255.f;
 }
@@ -396,7 +409,7 @@ static void HandleDisplay(void) {
 
     glColor4f(0.90f, 0.0f, 0.90f, 1.0f);
     glRasterPos2f(-0.95f, 0.90f);
-    PrintString(kParams.file_name);
+    PrintStringW(kParams.file_name);
 
     snprintf(tmp, sizeof(tmp), "Dimension:%d x %d", pic->width, pic->height);
     glColor4f(0.90f, 0.0f, 0.90f, 1.0f);
@@ -600,7 +613,7 @@ int main(int argc, char* argv[]) {
 
   // Position iterator to last frame. Next call to HandleDisplay will wrap over.
   // We take this into account by bumping up loop_count.
-  WebPDemuxGetFrame(kParams.dmux, 0, curr);
+  if (!WebPDemuxGetFrame(kParams.dmux, 0, curr)) goto Error;
   if (kParams.loop_count) ++kParams.loop_count;
 
 #if defined(__unix__) || defined(__CYGWIN__)

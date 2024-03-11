@@ -24,7 +24,7 @@ TRAVIS_TEMPLATE = """\
 # Differences are explained here:
 # https://docs.travis-ci.com/user/languages/minimal-and-generic/
 language: minimal
-dist: focal
+dist: jammy
 
 jobs:
   include:
@@ -257,7 +257,6 @@ def generate_macos(arch):
 
     exclude = ([Option.as_malloc_conf(opt) for opt in (
             'dss:primary',
-            'percpu_arena:percpu',
             'background_thread:true')] +
         [Option.as_configure_flag('--enable-prof')] +
         [CLANG,])
@@ -310,7 +309,11 @@ def main():
     jobs = '\n'.join((
         generate_windows(AMD64),
 
-        generate_freebsd(AMD64),
+        # Travis currently provides only FreeBSD 12.1 which is EOL.  Builds are
+        # not working as of Jan 2024.  Disable the tests for now to avoid the
+        # noise / confusion.
+
+        # generate_freebsd(AMD64),
 
         generate_linux(AMD64),
         generate_linux(PPC64LE),

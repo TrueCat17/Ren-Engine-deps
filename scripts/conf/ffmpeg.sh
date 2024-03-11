@@ -6,7 +6,6 @@ export CFLAGS="-O2 -flto"
 export LDFLAGS="-lm -flto"
 
 ./configure \
-	--cpu=I686 \
 	--enable-gpl --enable-version3 \
 	\
 	--cc="$CC" \
@@ -48,6 +47,7 @@ export LDFLAGS="-lm -flto"
 	--disable-dxva2 \
 	--disable-cuda-llvm \
 	--disable-vaapi \
-	--disable-v4l2-m2m
+	--disable-v4l2-m2m \
+	--disable-vulkan
 	
 make clean

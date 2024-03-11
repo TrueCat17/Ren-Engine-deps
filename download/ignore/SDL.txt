@@ -5,6 +5,7 @@
 !/src/test/SDL_test_random.c
 /test/
 /VisualC/
+/VisualC-GDK/
 /VisualC-WinRT/
 /visualtest/
 /Xcode/

@@ -23,7 +23,7 @@ FFMPEG=ffmpeg$(PROGSSUF)$(EXESUF)
 $(AREF): CMP=
 
 APITESTSDIR := tests/api
-FATE_OUTDIRS = tests/data tests/data/fate tests/data/filtergraphs tests/data/lavf tests/data/lavf-fate tests/data/pixfmt tests/vsynth1 $(APITESTSDIR)
+FATE_OUTDIRS = tests/data tests/data/fate tests/data/filtergraphs tests/data/maps tests/data/streamgroups tests/data/lavf tests/data/lavf-fate tests/data/pixfmt tests/vsynth1 $(APITESTSDIR)
 OUTDIRS += $(FATE_OUTDIRS)
 
 $(VREF): tests/videogen$(HOSTEXESUF) | tests/vsynth1
@@ -64,6 +64,14 @@ tests/data/%.sw tests/data/asynth% tests/data/vsynth%.yuv tests/vsynth%/00.pgm t
 
 tests/data/filtergraphs/%: TAG = COPY
 tests/data/filtergraphs/%: $(SRC_PATH)/tests/filtergraphs/% | tests/data/filtergraphs
+	$(M)cp $< $@
+
+tests/data/maps/%: TAG = COPY
+tests/data/maps/%: $(SRC_PATH)/tests/maps/% | tests/data/maps
+	$(M)cp $< $@
+
+tests/data/streamgroups/%: TAG = COPY
+tests/data/streamgroups/%: $(SRC_PATH)/tests/streamgroups/% | tests/data/streamgroups
 	$(M)cp $< $@
 
 RUNNING_FATE := $(filter check fate%,$(filter-out fate-rsync,$(MAKECMDGOALS)))
@@ -108,10 +116,19 @@ FRAMECRC = $(call ALLYES, $(1)_DEMUXER $(2:%=%_DECODER) $(3)                  \
                           PCM_S16LE_ENCODER RAWVIDEO_ENCODER FRAMECRC_MUXER   \
                           PIPE_PROTOCOL FILE_PROTOCOL)
 
+# Variant of DEMDEC for use with the "pcm" command.
+PCM = $(call ALLYES, $(1)_DEMUXER $(2)_DECODER  $(3) FILE_PROTOCOL            \
+                     PCM_S16LE_ENCODER PCM_S16LE_MUXER PIPE_PROTOCOL)
+
 DEMMUX  = $(call ALLYES, $(1)_DEMUXER $(2)_MUXER $(3) FILE_PROTOCOL)
 
-FILTERDEMDEC       = $(call ALLYES, $(1:%=%_FILTER) $(2)_DEMUXER $(3)_DECODER $(4) FILE_PROTOCOL)
-FILTERDEMDECMUX    = $(call ALLYES, $(1:%=%_FILTER) $(2)_DEMUXER $(3)_DECODER $(4)_MUXER   $(5) FILE_PROTOCOL)
+# Variant of FRAMECRC for the cases with -lavfi where no demuxer is involved.
+FILTERFRAMECRC     = $(call ALLYES, $(1:%=%_FILTER) $(2) PCM_S16LE_ENCODER    \
+                                    RAWVIDEO_ENCODER FRAMECRC_MUXER PIPE_PROTOCOL)
+# Specialization of FRAMECRC to be used when filtering is involved.
+FILTERDEMDEC       = $(call ALLYES, $(1:%=%_FILTER) $(2:%=%_DEMUXER) $(3:%=%_DECODER) \
+                                    $(4) PCM_S16LE_ENCODER RAWVIDEO_ENCODER   \
+                                    FRAMECRC_MUXER FILE_PROTOCOL PIPE_PROTOCOL)
 FILTERDEMDECENCMUX = $(call ALLYES, $(1:%=%_FILTER) $(2)_DEMUXER $(3)_DECODER $(4)_ENCODER $(5)_MUXER $(6) FILE_PROTOCOL)
 
 PARSERDEMDEC       = $(call ALLYES, $(1)_PARSER $(2)_DEMUXER $(3)_DECODER $(4) FILE_PROTOCOL)
@@ -163,17 +180,18 @@ include $(SRC_PATH)/tests/fate/cover-art.mak
 include $(SRC_PATH)/tests/fate/dca.mak
 include $(SRC_PATH)/tests/fate/demux.mak
 include $(SRC_PATH)/tests/fate/dfa.mak
-include $(SRC_PATH)/tests/fate/dnn.mak
 include $(SRC_PATH)/tests/fate/dnxhd.mak
 include $(SRC_PATH)/tests/fate/dpcm.mak
 include $(SRC_PATH)/tests/fate/dvvideo.mak
 include $(SRC_PATH)/tests/fate/ea.mak
 include $(SRC_PATH)/tests/fate/exif.mak
+include $(SRC_PATH)/tests/fate/enc_external.mak
+# Must be included after lavf-video.mak
 include $(SRC_PATH)/tests/fate/ffmpeg.mak
 include $(SRC_PATH)/tests/fate/ffprobe.mak
-include $(SRC_PATH)/tests/fate/fft.mak
 include $(SRC_PATH)/tests/fate/fifo-muxer.mak
 include $(SRC_PATH)/tests/fate/filter-audio.mak
+# Must be included after vcodec.mak
 include $(SRC_PATH)/tests/fate/filter-video.mak
 include $(SRC_PATH)/tests/fate/fits.mak
 include $(SRC_PATH)/tests/fate/flac.mak
@@ -185,10 +203,13 @@ include $(SRC_PATH)/tests/fate/hap.mak
 include $(SRC_PATH)/tests/fate/hevc.mak
 include $(SRC_PATH)/tests/fate/hlsenc.mak
 include $(SRC_PATH)/tests/fate/hw.mak
+include $(SRC_PATH)/tests/fate/iamf.mak
 include $(SRC_PATH)/tests/fate/id3v2.mak
 include $(SRC_PATH)/tests/fate/image.mak
 include $(SRC_PATH)/tests/fate/imf.mak
 include $(SRC_PATH)/tests/fate/indeo.mak
+include $(SRC_PATH)/tests/fate/jpeg2000.mak
+include $(SRC_PATH)/tests/fate/jxl.mak
 include $(SRC_PATH)/tests/fate/libavcodec.mak
 include $(SRC_PATH)/tests/fate/libavdevice.mak
 include $(SRC_PATH)/tests/fate/libavformat.mak
@@ -214,12 +235,15 @@ include $(SRC_PATH)/tests/fate/pixfmt.mak
 include $(SRC_PATH)/tests/fate/pixlet.mak
 include $(SRC_PATH)/tests/fate/probe.mak
 include $(SRC_PATH)/tests/fate/prores.mak
+include $(SRC_PATH)/tests/fate/qoa.mak
 include $(SRC_PATH)/tests/fate/qt.mak
 include $(SRC_PATH)/tests/fate/qtrle.mak
 include $(SRC_PATH)/tests/fate/real.mak
 include $(SRC_PATH)/tests/fate/screen.mak
+include $(SRC_PATH)/tests/fate/segafilm.mak
 include $(SRC_PATH)/tests/fate/segment.mak
 include $(SRC_PATH)/tests/fate/source.mak
+include $(SRC_PATH)/tests/fate/spdif.mak
 include $(SRC_PATH)/tests/fate/speedhq.mak
 include $(SRC_PATH)/tests/fate/subtitles.mak
 include $(SRC_PATH)/tests/fate/truehd.mak
@@ -230,6 +254,7 @@ include $(SRC_PATH)/tests/fate/voice.mak
 include $(SRC_PATH)/tests/fate/vorbis.mak
 include $(SRC_PATH)/tests/fate/vpx.mak
 include $(SRC_PATH)/tests/fate/vqf.mak
+include $(SRC_PATH)/tests/fate/vvc.mak
 include $(SRC_PATH)/tests/fate/wavpack.mak
 include $(SRC_PATH)/tests/fate/webm-dash-manifest.mak
 include $(SRC_PATH)/tests/fate/wma.mak
@@ -290,8 +315,8 @@ $(FATE): export PROGSUF = $(PROGSSUF)
 $(FATE): export EXECSUF = $(EXESUF)
 $(FATE): export HOSTEXECSUF = $(HOSTEXESUF)
 $(FATE): $(FATE_UTILS:%=tests/%$(HOSTEXESUF)) | $(FATE_OUTDIRS)
-	@echo "TEST    $(@:fate-%=%)"
-	$(Q)$(SRC_PATH)/tests/fate-run.sh $@ "$(TARGET_SAMPLES)" "$(TARGET_EXEC)" "$(TARGET_PATH)" '$(CMD)' '$(CMP)' '$(REF)' '$(FUZZ)' '$(THREADS)' '$(THREAD_TYPE)' '$(CPUFLAGS)' '$(CMP_SHIFT)' '$(CMP_TARGET)' '$(SIZE_TOLERANCE)' '$(CMP_UNIT)' '$(GEN)' '$(HWACCEL)' '$(REPORT)' '$(KEEP_FILES)'
+	@echo "TEST    $(@:fate-%=%)$(FATE_SUFFIX)"
+	$(Q)$(SRC_PATH)/tests/fate-run.sh $@$(FATE_SUFFIX) "$(TARGET_SAMPLES)" "$(TARGET_EXEC)" "$(TARGET_PATH)" '$(CMD)' '$(CMP)' '$(REF)' '$(FUZZ)' '$(THREADS)' '$(THREAD_TYPE)' '$(CPUFLAGS)' '$(CMP_SHIFT)' '$(CMP_TARGET)' '$(SIZE_TOLERANCE)' '$(CMP_UNIT)' '$(GEN)' '$(HWACCEL)' '$(REPORT)' '$(KEEP_FILES)'
 
 fate-list:
 	@printf '%s\n' $(sort $(FATE))
