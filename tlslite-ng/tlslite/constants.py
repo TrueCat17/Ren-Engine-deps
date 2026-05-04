@@ -1,4 +1,4 @@
-# Authors: 
+# Authors:
 #   Trevor Perrin
 #   Google - defining ClientCertificateType
 #   Google (adapted by Sam Rushing) - NPN support
@@ -129,6 +129,7 @@ class HandshakeType(TLSEnum):
     finished = 20
     certificate_status = 22
     key_update = 24  # TLS 1.3
+    compressed_certificate = 25  # TLS 1.3
     next_protocol = 67
     message_hash = 254  # TLS 1.3
 
@@ -168,6 +169,7 @@ class ExtensionType(TLSEnum):
     client_hello_padding = 21  # RFC 7685
     encrypt_then_mac = 22  # RFC 7366
     extended_master_secret = 23  # RFC 7627
+    compress_certificate = 27  # RFC 8879
     record_size_limit = 28  # RFC 8449
     session_ticket = 35 # RFC 5077
     extended_random = 40  # draft-rescorla-tls-extended-random-02
@@ -240,6 +242,15 @@ class SignatureScheme(TLSEnum):
     rsa_pss_sha384 = (8, 5)
     rsa_pss_sha512 = (8, 6)
 
+    # RFC 8734
+    # the names are from RFC, so we don't care that they don't follow naming
+    # pattern
+    # pylint: disable=invalid-name
+    ecdsa_brainpoolP256r1tls13_sha256 = (8, 0x1A)
+    ecdsa_brainpoolP384r1tls13_sha384 = (8, 0x1B)
+    ecdsa_brainpoolP512r1tls13_sha512 = (8, 0x1C)
+    # pylint: enable=invalid-name
+
     dsa_sha1 = (2, 2)
     dsa_sha224 = (3, 2)
     dsa_sha256 = (4, 2)
@@ -308,6 +319,14 @@ class SignatureScheme(TLSEnum):
             kType, _, _, hName = vals
         assert kType in ('rsa', 'ecdsa', 'dsa')
         return hName
+
+
+# set of TLS 1.3 specific schemes for Brainpool curves
+TLS_1_3_BRAINPOOL_SIG_SCHEMES = set([
+    SignatureScheme.ecdsa_brainpoolP256r1tls13_sha256,
+    SignatureScheme.ecdsa_brainpoolP384r1tls13_sha384,
+    SignatureScheme.ecdsa_brainpoolP512r1tls13_sha512,
+])
 
 
 class AlgorithmOID(TLSEnum):
@@ -421,7 +440,19 @@ class GroupName(TLSEnum):
     ffdhe8192 = 260
     allFF = list(range(256, 261))
 
-    all = allEC + allFF
+    # RFC8734
+    brainpoolP256r1tls13 = 31
+    brainpoolP384r1tls13 = 32
+    brainpoolP512r1tls13 = 33
+    allEC.extend(list(range(31, 34)))
+
+    # draft-kwiatkowski-tls-ecdhe-mlkem
+    secp256r1mlkem768 = 0x11EB
+    x25519mlkem768 = 0x11EC
+    secp384r1mlkem1024 = 0x11ED
+    allKEM = [0x11EB, 0x11EC, 0x11ED]
+
+    all = allEC + allFF + allKEM
 
     @classmethod
     def toRepr(cls, value, blacklist=None):
@@ -579,6 +610,17 @@ class PskKeyExchangeMode(TLSEnum):
 
     psk_ke = 0
     psk_dhe_ke = 1
+
+
+class CertificateCompressionAlgorithm(TLSEnum):
+    """
+    Compression algorithms used for the compression of certificates
+    from RFC 8879.
+    """
+
+    zlib = 1
+    brotli = 2
+    zstd = 3
 
 
 class CipherSuite:

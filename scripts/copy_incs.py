@@ -14,77 +14,85 @@ if os.path.exists(inc_path):
 
 
 
-for i in os.listdir(sources_path):
-	if os.path.isdir(sources_path + i) and i.startswith('cpython'):
-		shutil.copytree(sources_path + i + '/Include', inc_path + '/python3')
-		
-		# remove __declspec (for cygwin)
-		exports_file_paths = (sources_path + i + '/Include/exports.h', inc_path + '/python3/exports.h')
-		os.system('sed -e "s/__declspec.*//" %s > %s' % exports_file_paths)
-		
-		src_pyconfig = open(sources_path + i + '/pyconfig.h', 'rb')
-		dst_pyconfig = open(inc_path + '/python3/pyconfig.h', 'wb')
-		
+python_path = sources_path + 'cpython/'
+if os.path.exists(python_path):
+	shutil.copytree(
+		python_path + 'Include/',
+		inc_path + 'python3/',
+		ignore = shutil.ignore_patterns('internal')
+	)
+	
+	# remove __declspec (for cygwin)
+	exports_file_paths = (
+		python_path + 'Include/exports.h',
+		inc_path + 'python3/exports.h'
+	)
+	os.system('sed -e "s/__declspec.*//" %s > %s' % exports_file_paths)
+	
+	src_path = python_path + 'pyconfig.h'
+	dst_path = inc_path + 'python3/pyconfig.h'
+	with open(src_path, 'rb') as src, open(dst_path, 'wb') as dst:
 		macros = '_POSIX_C_SOURCE _XOPEN_SOURCE _XOPEN_SOURCE_EXTENDED __BSD_VISIBLE __EXTENSIONS__'.split(' ')
-		for line in src_pyconfig:
-			line = str(line, 'utf8')
+		
+		for line in src:
+			line = str(line, 'utf-8')
 			
 			for macro in macros:
 				if line.startswith('#define ' + macro):
 					line = '#ifndef ' + macro + '\n\t' + line + '#endif\n'
 			
-			dst_pyconfig.write(bytes(line, 'utf8'))
-		
-		src_pyconfig.close()
-		dst_pyconfig.close()
-		break
+			dst.write(bytes(line, 'utf-8'))
 else:
 	print('Python sources not found')
 
 
 
-for i in os.listdir(sources_path):
-	if os.path.isdir(sources_path + i) and i.startswith('ffmpeg'):
-
-		for lib in 'libavcodec libavformat libavutil libswresample'.split(' '):
-			lib_path = sources_path + i + '/' + lib + '/'
-			
-			for path, ds, fs in os.walk(lib_path):
-				path = os.path.relpath(path, lib_path)
-				
-				for f in fs:
-					if f.endswith('.h'):
-						if not os.path.exists(inc_path + lib + '/' + path):
-							os.makedirs(inc_path + lib + '/' + path)
-						shutil.copyfile(os.path.join(lib_path, path, f), os.path.join(inc_path + lib + '/', path, f))
-		
-		break
+ffmpeg_path = sources_path + 'ffmpeg/'
+if os.path.exists(ffmpeg_path):
+	os.makedirs(inc_path + 'libavcodec/')
+	need_avcodec_headers = [
+		'version_major.h',
+		'version.h',
+		'packet.h',
+		'defs.h',
+		'codec_par.h',
+		'codec_id.h',
+		'codec_desc.h',
+		'codec.h',
+		'avcodec.h',
+	]
+	for f in need_avcodec_headers:
+		shutil.copyfile(ffmpeg_path + 'libavcodec/' + f, inc_path + 'libavcodec/' + f)
+	
+	def ignore_not_headers(_, fs):
+		return [f for f in fs if not f.endswith('.h')]
+	for lib in 'libavformat libavutil libswresample'.split(' '):
+		shutil.copytree(
+			ffmpeg_path + lib + '/',
+			inc_path + lib + '/',
+			ignore = ignore_not_headers,
+		)
 else:
 	print('ffmpeg sources not found')
 
 
 
-for i in os.listdir(sources_path):
-	if os.path.isdir(sources_path + i) and i == 'SDL':
-		shutil.copytree(sources_path + i + '/include', inc_path + 'SDL2')
-		break
+sdl_path = sources_path + 'SDL/'
+if os.path.exists(sdl_path):
+	shutil.copytree(sdl_path + 'include/SDL3', inc_path + 'SDL3')
 else:
 	print('SDL sources not found')
 
 
-for i in os.listdir(sources_path):
-	if os.path.isdir(sources_path + i) and i == 'SDL_image':
-		shutil.copyfile(sources_path + i + '/SDL_image.h', inc_path + 'SDL2/SDL_image.h')
-		break
+sdl_image_path = sources_path + 'SDL_image/'
+if os.path.exists(sdl_image_path):
+	shutil.copyfile(sdl_image_path + 'include/SDL3_image/SDL_image.h', inc_path + 'SDL3/SDL_image.h')
 else:
 	print('SDL_image sources not found')
 
 
-for i in os.listdir(sources_path):
-	if os.path.isdir(sources_path + i) and i == 'SDL_ttf':
-		shutil.copyfile(sources_path + i + '/SDL_ttf.h', inc_path + 'SDL2/SDL_ttf.h')
-		break
+sdl_ttf_path = sources_path + 'SDL_ttf/'
+if os.path.exists(sdl_ttf_path):
+	shutil.copyfile(sdl_ttf_path + 'include/SDL3_ttf/SDL_ttf.h', inc_path + 'SDL3/SDL_ttf.h')
 else:
 	print('SDL_ttf sources not found')
-
-

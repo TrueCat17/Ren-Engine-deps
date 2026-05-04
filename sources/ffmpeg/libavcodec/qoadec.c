@@ -67,7 +67,7 @@ static int qoa_lms_predict(QOAChannel *lms)
 {
     int prediction = 0;
     for (int i = 0; i < QOA_LMS_LEN; i++)
-        prediction += lms->weights[i] * lms->history[i];
+        prediction += (unsigned)lms->weights[i] * lms->history[i];
     return prediction >> 13;
 }
 
@@ -165,6 +165,5 @@ const FFCodec ff_qoa_decoder = {
     FF_CODEC_DECODE_CB(qoa_decode_frame),
     .p.capabilities = AV_CODEC_CAP_CHANNEL_CONF |
                       AV_CODEC_CAP_DR1,
-    .p.sample_fmts  = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_S16,
-                                                      AV_SAMPLE_FMT_NONE },
+    CODEC_SAMPLEFMTS(AV_SAMPLE_FMT_S16),
 };

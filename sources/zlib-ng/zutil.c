@@ -21,7 +21,7 @@ z_const char * const PREFIX(z_errmsg)[10] = {
 };
 
 const char PREFIX3(vstring)[] =
-    " zlib-ng 2.1.6";
+    " zlib-ng 2.3.90 devel";
 
 #ifdef ZLIB_COMPAT
 const char * Z_EXPORT zlibVersion(void) {
@@ -37,25 +37,25 @@ unsigned long Z_EXPORT PREFIX(zlibCompileFlags)(void) {
     unsigned long flags;
 
     flags = 0;
-    switch ((int)(sizeof(unsigned int))) {
+    switch (sizeof(unsigned int)) {
     case 2:     break;
     case 4:     flags += 1;     break;
     case 8:     flags += 2;     break;
     default:    flags += 3;
     }
-    switch ((int)(sizeof(unsigned long))) {
+    switch (sizeof(unsigned long)) {
     case 2:     break;
     case 4:     flags += 1 << 2;        break;
     case 8:     flags += 2 << 2;        break;
     default:    flags += 3 << 2;
     }
-    switch ((int)(sizeof(void *))) {
+    switch (sizeof(void *)) {
     case 2:     break;
     case 4:     flags += 1 << 4;        break;
     case 8:     flags += 2 << 4;        break;
     default:    flags += 3 << 4;
     }
-    switch ((int)(sizeof(z_off_t))) {
+    switch (sizeof(z_off_t)) {
     case 2:     break;
     case 4:     flags += 1 << 6;        break;
     case 8:     flags += 2 << 6;        break;
@@ -96,10 +96,12 @@ void Z_INTERNAL z_error(const char *m) {
 /* exported to allow conversion of error code to string for compress() and
  * uncompress()
  */
-const char * Z_EXPORT PREFIX(zError)(int err) {
+const char * Z_EXPORT PREFIX(zError)(z_int32_t err) {
     return ERR_MSG(err);
 }
 
+// Zlib-ng's default alloc/free implementation, used unless
+// application supplies its own alloc/free functions.
 void Z_INTERNAL *PREFIX(zcalloc)(void *opaque, unsigned items, unsigned size) {
     Z_UNUSED(opaque);
     return zng_alloc((size_t)items * (size_t)size);
@@ -110,25 +112,20 @@ void Z_INTERNAL PREFIX(zcfree)(void *opaque, void *ptr) {
     zng_free(ptr);
 }
 
-/* Since we support custom memory allocators, some which might not align memory as we expect,
- * we have to ask for extra memory and return an aligned pointer. */
-void Z_INTERNAL *PREFIX3(alloc_aligned)(zng_calloc_func zalloc, void *opaque, unsigned items, unsigned size, unsigned align) {
-    uintptr_t return_ptr, original_ptr;
-    uint32_t alloc_size, align_diff;
+/* Provide aligned allocations, only used by gz* code */
+void Z_INTERNAL *zng_alloc_aligned(unsigned size, unsigned align) {
+    uintptr_t return_ptr, original_ptr, align_diff;
+    uint32_t alloc_size;
     void *ptr;
 
-    /* If no custom calloc function used then call zlib-ng's aligned calloc */
-    if (zalloc == NULL || zalloc == PREFIX(zcalloc))
-        return PREFIX(zcalloc)(opaque, items, size);
-
     /* Allocate enough memory for proper alignment and to store the original memory pointer */
-    alloc_size = sizeof(void *) + (items * size) + align;
-    ptr = zalloc(opaque, 1, alloc_size);
+    alloc_size = sizeof(void *) + size + align;
+    ptr = zng_alloc(alloc_size);
     if (!ptr)
         return NULL;
 
     /* Calculate return pointer address with space enough to store original pointer */
-    align_diff = align - ((uintptr_t)ptr % align);
+    align_diff = ALIGN_DIFF(ptr, align);
     return_ptr = (uintptr_t)ptr + align_diff;
     if (align_diff < sizeof(void *))
         return_ptr += align;
@@ -141,12 +138,7 @@ void Z_INTERNAL *PREFIX3(alloc_aligned)(zng_calloc_func zalloc, void *opaque, un
     return (void *)return_ptr;
 }
 
-void Z_INTERNAL PREFIX3(free_aligned)(zng_cfree_func zfree, void *opaque, void *ptr) {
-    /* If no custom cfree function used then call zlib-ng's aligned cfree */
-    if (zfree == NULL || zfree == PREFIX(zcfree)) {
-        PREFIX(zcfree)(opaque, ptr);
-        return;
-    }
+void Z_INTERNAL zng_free_aligned(void *ptr) {
     if (!ptr)
         return;
 
@@ -155,5 +147,5 @@ void Z_INTERNAL PREFIX3(free_aligned)(zng_cfree_func zfree, void *opaque, void *
     void *free_ptr = *(void **)original_ptr;
 
     /* Free original memory allocation */
-    zfree(opaque, free_ptr);
+    zng_free(free_ptr);
 }

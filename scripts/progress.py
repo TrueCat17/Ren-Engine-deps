@@ -8,20 +8,18 @@ file_name = scripts_path + '/progress_list.txt'
 def read_progress():
 	res = []
 	
-	f = open(file_name, 'rb')
-	for s in f:
-		lib, progress = str(s, 'utf8').strip().split(' ')
-		res.append((lib, progress))
+	with open(file_name, 'rb') as f:
+		for s in f:
+			lib, progress = str(s, 'utf-8').strip().split(' ')
+			res.append((lib, progress))
 	
 	return res
 
 def write_progress(progress_list):
-	f = open(file_name, 'wb')
-	for lib, progress in progress_list:
-		f.write(bytes(lib + ' ' + progress + '\n', 'utf8'))
+	with open(file_name, 'wb') as f:
+		for lib, progress in progress_list:
+			f.write(bytes(lib + ' ' + progress + '\n', 'utf-8'))
 
 if __name__ == '__main__':
-	progress_list = []
-	for lib in libs:
-		progress_list.append([lib, 'start'])
+	progress_list = [(lib, 'start') for lib in libs]
 	write_progress(progress_list)

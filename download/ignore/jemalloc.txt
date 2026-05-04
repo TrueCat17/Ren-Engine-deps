@@ -1,2 +1,4 @@
-/include/msvc_compat
-/msvc
+/include/msvc_compat/
+/msvc/
+
+/ChangeLog

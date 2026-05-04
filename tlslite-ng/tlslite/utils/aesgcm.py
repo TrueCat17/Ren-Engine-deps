@@ -13,6 +13,7 @@
 # x^127 term. This bit reversal also applies to polynomials used as indices in a
 # look-up table.
 
+from __future__ import division
 from tlslite.utils import python_aes
 from .constanttime import ct_compare_digest
 from .cryptomath import bytesToNumber, numberToByteArray

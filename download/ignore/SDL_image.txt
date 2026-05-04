@@ -1,3 +1,2 @@
 /VisualC/
-/VisualC-WinRT
-/Xcode
+/Xcode/

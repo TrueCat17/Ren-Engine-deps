@@ -6,6 +6,7 @@
 Implementation that follows RFC 7539 and draft-ietf-tls-chacha20-poly1305-00
 """
 
+from __future__ import division
 from .constanttime import ct_compare_digest
 from .chacha import ChaCha
 from .poly1305 import Poly1305

@@ -55,11 +55,16 @@ macro(add_address_sanitizer)
     check_sanitizer_support("${known_checks}" supported_checks)
     if(NOT ${supported_checks} STREQUAL "")
         message(STATUS "Address sanitizer is enabled: ${supported_checks}")
-        add_compile_options(-fsanitize=${supported_checks})
-        add_link_options(-fsanitize=${supported_checks})
+        if(NOT MSVC)
+            add_compile_options("-fsanitize=${supported_checks}")
+            add_link_options("-fsanitize=${supported_checks}")
+        else()
+            add_compile_options("/fsanitize=${supported_checks}" "/Zi")
+            # Note that the MSVC linker doesn't use /fsanitizer
+        endif()
         add_common_sanitizer_flags()
     else()
-        message(STATUS "Address sanitizer is not supported")
+        message(FATAL_ERROR "Address sanitizer is not supported")
     endif()
 
     if(CMAKE_CROSSCOMPILING_EMULATOR)
@@ -74,6 +79,8 @@ macro(add_address_sanitizer)
             add_link_options(-fsanitize=${supported_checks})
             add_common_sanitizer_flags()
         else()
+            # The Microsoft C compiler doesn't support Leak detector,
+            # so don't make this an error that disables ASAN completely
             message(STATUS "Leak sanitizer is not supported")
         endif()
     endif()
@@ -93,7 +100,7 @@ macro(add_memory_sanitizer)
             add_link_options(-fsanitize-memory-track-origins)
         endif()
     else()
-        message(STATUS "Memory sanitizer is not supported")
+        message(FATAL_ERROR "Memory sanitizer is not supported")
     endif()
 endmacro()
 
@@ -105,12 +112,13 @@ macro(add_thread_sanitizer)
         add_link_options(-fsanitize=${supported_checks})
         add_common_sanitizer_flags()
     else()
-        message(STATUS "Thread sanitizer is not supported")
+        message(FATAL_ERROR "Thread sanitizer is not supported")
     endif()
 endmacro()
 
 macro(add_undefined_sanitizer)
     set(known_checks
+        alignment
         array-bounds
         bool
         bounds
@@ -131,16 +139,12 @@ macro(add_undefined_sanitizer)
         shift-exponent
         signed-integer-overflow
         undefined
-        unsigned-integer-overflow
-        unsigned-shift-base
         vla-bound
         vptr
         )
 
-    # Only check for alignment sanitizer flag if unaligned access is not supported
-    if(NOT WITH_UNALIGNED)
-        list(APPEND known_checks alignment)
-    endif()
+    # unsigned-integer-overflow and unsigned-shift-base are not enabled, as they are not undefined in C/C++
+
     # Object size sanitizer has no effect at -O0 and produces compiler warning if enabled
     if(NOT CMAKE_C_FLAGS MATCHES "-O0")
         list(APPEND known_checks object-size)
@@ -153,14 +157,8 @@ macro(add_undefined_sanitizer)
         add_compile_options(-fsanitize=${supported_checks})
         add_link_options(-fsanitize=${supported_checks})
 
-        # Group sanitizer flag -fsanitize=undefined will automatically add alignment, even if
-        # it is not in our sanitize flag list, so we need to explicitly disable alignment sanitizing.
-        if(WITH_UNALIGNED)
-            add_compile_options(-fno-sanitize=alignment)
-        endif()
-
         add_common_sanitizer_flags()
     else()
-        message(STATUS "Undefined behavior sanitizer is not supported")
+        message(FATAL_ERROR "Undefined behavior sanitizer is not supported")
     endif()
 endmacro()

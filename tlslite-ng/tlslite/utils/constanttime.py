@@ -3,6 +3,8 @@
 # See the LICENSE file for legal information regarding use of this file.
 """Various constant time functions for processing sensitive data"""
 
+from __future__ import division
+
 from .compat import compatHMAC
 import hmac
 

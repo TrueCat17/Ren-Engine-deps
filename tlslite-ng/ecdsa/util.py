@@ -23,6 +23,7 @@ from hashlib import sha256
 from . import der
 from ._compat import normalise_bytes
 
+
 # RFC5480:
 #   The "unrestricted" algorithm identifier is:
 #     id-ecPublicKey OBJECT IDENTIFIER ::= {
@@ -47,12 +48,28 @@ oid_ecDH = (1, 3, 132, 1, 12)
 
 oid_ecMQV = (1, 3, 132, 1, 13)
 
-def entropy_to_bits(ent_256):
-    """Convert a bytestring to string of 0's and 1's"""
-    return bin(int.from_bytes(ent_256, "big"))[2:].zfill(len(ent_256) * 8)
+if sys.version_info >= (3,):  # pragma: no branch
 
-def bit_length(x):
-    return x.bit_length() or 1
+    def entropy_to_bits(ent_256):
+        """Convert a bytestring to string of 0's and 1's"""
+        return bin(int.from_bytes(ent_256, "big"))[2:].zfill(len(ent_256) * 8)
+
+else:
+
+    def entropy_to_bits(ent_256):
+        """Convert a bytestring to string of 0's and 1's"""
+        return "".join(bin(ord(x))[2:].zfill(8) for x in ent_256)
+
+
+if sys.version_info < (2, 7):  # pragma: no branch
+    # Can't add a method to a built-in type so we are stuck with this
+    def bit_length(x):
+        return len(bin(x)) - 2
+
+else:
+
+    def bit_length(x):
+        return x.bit_length() or 1
 
 
 def orderlen(order):
@@ -284,6 +301,23 @@ def sigencode_der(r, s, order):
     return der.encode_sequence(der.encode_integer(r), der.encode_integer(s))
 
 
+def _canonize(s, order):
+    """
+    Internal function for ensuring that the ``s`` value of a signature is in
+    the "canonical" format.
+
+    :param int s: the second parameter of ECDSA signature
+    :param int order: the order of the curve over which the signatures was
+        computed
+
+    :return: canonical value of s
+    :rtype: int
+    """
+    if s > order // 2:
+        s = order - s
+    return s
+
+
 def sigencode_strings_canonize(r, s, order):
     """
     Encode the signature to a pair of strings in a tuple
@@ -306,8 +340,7 @@ def sigencode_strings_canonize(r, s, order):
     :return: raw encoding of ECDSA signature
     :rtype: tuple(bytes, bytes)
     """
-    if s > order / 2:
-        s = order - s
+    s = _canonize(s, order)
     return sigencode_strings(r, s, order)
 
 
@@ -330,8 +363,7 @@ def sigencode_string_canonize(r, s, order):
     :return: raw encoding of ECDSA signature
     :rtype: bytes
     """
-    if s > order / 2:
-        s = order - s
+    s = _canonize(s, order)
     return sigencode_string(r, s, order)
 
 
@@ -361,8 +393,7 @@ def sigencode_der_canonize(r, s, order):
     :return: DER encoding of ECDSA signature
     :rtype: bytes
     """
-    if s > order / 2:
-        s = order - s
+    s = _canonize(s, order)
     return sigencode_der(r, s, order)
 
 

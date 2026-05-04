@@ -1,9 +1,8 @@
 import os
 
-libs = ['cpython', 'jemalloc', 'ffmpeg', 'zlib', 'brotli', 'freetype', 'libjpeg', 'libpng', 'libwebp', 'SDL', 'SDL_image', 'SDL_ttf']
+libs = ['cpython', 'jemalloc', 'ffmpeg', 'zlib-ng', 'brotli', 'freetype', 'libjpeg-turbo', 'libwebp', 'SDL', 'SDL_image', 'SDL_ttf']
 
 scripts_path = os.path.dirname(os.path.abspath(__file__)) + '/'
-scripts_path = scripts_path.replace('\\', '/')
 
 for c in scripts_path:
 	if c >= 'a' and c <= 'z': continue

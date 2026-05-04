@@ -13,6 +13,6 @@ export LDFLAGS="-lm -flto"
 	--disable-stats \
 	--disable-fill \
 	--disable-doc \
-	--disable-cxx
+	--disable-cxx \
 
 make clean

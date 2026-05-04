@@ -6,6 +6,7 @@
 Implementation that follows RFC 7539 closely.
 """
 
+from __future__ import division
 from .compat import compat26Str
 import copy
 import struct

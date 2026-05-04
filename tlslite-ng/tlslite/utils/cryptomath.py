@@ -8,6 +8,7 @@
 """cryptomath module
 
 This module has basic math/crypto code."""
+from __future__ import print_function
 import os
 import math
 import base64

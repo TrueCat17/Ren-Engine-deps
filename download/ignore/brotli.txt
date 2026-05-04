@@ -7,3 +7,5 @@
 /python/
 /research/
 /tests/
+
+/CHANGELOG.md

@@ -20,10 +20,12 @@
  */
 
 #include "libavutil/channel_layout.h"
+#include "libavutil/mem.h"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/bytestream.h"
 #include "libavcodec/flac.h"
 #include "avformat.h"
+#include "avio_internal.h"
 #include "demux.h"
 #include "flac_picture.h"
 #include "internal.h"
@@ -79,8 +81,13 @@ static int flac_read_header(AVFormatContext *s)
 
     /* process metadata blocks */
     while (!avio_feof(s->pb) && !metadata_last) {
-        if (avio_read(s->pb, header, 4) != 4)
-            return AVERROR_INVALIDDATA;
+        ret = avio_read(s->pb, header, 4);
+        if (ret < 0) {
+            return ret;
+        } else if (ret != 4) {
+            return AVERROR_EOF;
+        }
+
         flac_parse_block_header(header, &metadata_last, &metadata_type,
                                    &metadata_size);
         switch (metadata_type) {
@@ -94,8 +101,9 @@ static int flac_read_header(AVFormatContext *s)
             if (!buffer) {
                 return AVERROR(ENOMEM);
             }
-            if (avio_read(s->pb, buffer, metadata_size) != metadata_size) {
-                RETURN_ERROR(AVERROR(EIO));
+            ret = ffio_read_size(s->pb, buffer, metadata_size);
+            if (ret < 0) {
+                RETURN_ERROR(ret);
             }
             break;
         /* skip metadata block for unsupported types */
@@ -282,12 +290,6 @@ static av_unused int64_t flac_read_timestamp(AVFormatContext *s, int stream_inde
     if (avio_seek(s->pb, *ppos, SEEK_SET) < 0)
         return AV_NOPTS_VALUE;
 
-    parser = av_parser_init(st->codecpar->codec_id);
-    if (!parser){
-        return AV_NOPTS_VALUE;
-    }
-    parser->flags |= PARSER_FLAG_USE_CODEC_TS;
-
     if (!flac->parser_dec) {
         flac->parser_dec = avcodec_alloc_context3(NULL);
         if (!flac->parser_dec)
@@ -297,6 +299,11 @@ static av_unused int64_t flac_read_timestamp(AVFormatContext *s, int stream_inde
         if (ret < 0)
             return ret;
     }
+
+    parser = av_parser_init(st->codecpar->codec_id);
+    if (!parser)
+        return AV_NOPTS_VALUE;
+    parser->flags |= PARSER_FLAG_USE_CODEC_TS;
 
     for (;;){
         uint8_t *data;
@@ -364,18 +371,18 @@ static int flac_seek(AVFormatContext *s, int stream_index, int64_t timestamp, in
     return -1;
 }
 
-const AVInputFormat ff_flac_demuxer = {
-    .name           = "flac",
-    .long_name      = NULL_IF_CONFIG_SMALL("raw FLAC"),
+const FFInputFormat ff_flac_demuxer = {
+    .p.name         = "flac",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("raw FLAC"),
+    .p.flags        = AVFMT_GENERIC_INDEX,
+    .p.extensions   = "flac",
+    .p.priv_class   = &ff_raw_demuxer_class,
     .read_probe     = flac_probe,
     .read_header    = flac_read_header,
     .read_close     = flac_close,
     .read_packet    = ff_raw_read_partial_packet,
     .read_seek      = flac_seek,
     .read_timestamp = flac_read_timestamp,
-    .flags          = AVFMT_GENERIC_INDEX,
-    .extensions     = "flac",
     .raw_codec_id   = AV_CODEC_ID_FLAC,
     .priv_data_size = sizeof(FLACDecContext),
-    .priv_class     = &ff_raw_demuxer_class,
 };

@@ -32,6 +32,20 @@
 # Written in 2005 by Peter Pearson and placed in the public domain.
 # Modified extensively as part of python-ecdsa.
 
+from __future__ import division
+
+try:
+    from gmpy2 import mpz
+
+    GMPY = True
+except ImportError:  # pragma: no branch
+    try:
+        from gmpy import mpz
+
+        GMPY = True
+    except ImportError:
+        GMPY = False
+
 
 from . import numbertheory
 from ._compat import normalise_bytes, int_to_bytes, bit_length, bytes_to_int
@@ -44,19 +58,40 @@ class CurveFp(object):
     :term:`Short Weierstrass Elliptic Curve <short Weierstrass curve>` over a
     prime field.
     """
-    def __init__(self, p, a, b, h=None):
-        """
-        The curve of points satisfying y^2 = x^3 + a*x + b (mod p).
 
-        h is an integer that is the cofactor of the elliptic curve domain
-        parameters; it is the number of points satisfying the elliptic
-        curve equation divided by the order of the base point. It is used
-        for selection of efficient algorithm for public point verification.
-        """
-        self.__p = p
-        self.__a = a
-        self.__b = b
-        self.__h = h
+    if GMPY:  # pragma: no branch
+
+        def __init__(self, p, a, b, h=None):
+            """
+            The curve of points satisfying y^2 = x^3 + a*x + b (mod p).
+
+            h is an integer that is the cofactor of the elliptic curve domain
+            parameters; it is the number of points satisfying the elliptic
+            curve equation divided by the order of the base point. It is used
+            for selection of efficient algorithm for public point verification.
+            """
+            self.__p = mpz(p)
+            self.__a = mpz(a)
+            self.__b = mpz(b)
+            # h is not used in calculations and it can be None, so don't use
+            # gmpy with it
+            self.__h = h
+
+    else:  # pragma: no branch
+
+        def __init__(self, p, a, b, h=None):
+            """
+            The curve of points satisfying y^2 = x^3 + a*x + b (mod p).
+
+            h is an integer that is the cofactor of the elliptic curve domain
+            parameters; it is the number of points satisfying the elliptic
+            curve equation divided by the order of the base point. It is used
+            for selection of efficient algorithm for public point verification.
+            """
+            self.__p = p
+            self.__a = a
+            self.__b = b
+            self.__h = h
 
     def __eq__(self, other):
         """Return True if other is an identical curve, False otherwise.
@@ -115,19 +150,38 @@ class CurveFp(object):
 
 class CurveEdTw(object):
     """Parameters for a Twisted Edwards Elliptic Curve"""
-    def __init__(self, p, a, d, h=None, hash_func=None):
-        """
-        The curve of points satisfying a*x^2 + y^2 = 1 + d*x^2*y^2 (mod p).
 
-        h is the cofactor of the curve.
-        hash_func is the hash function associated with the curve
-            (like SHA-512 for Ed25519)
-        """
-        self.__p = p
-        self.__a = a
-        self.__d = d
-        self.__h = h
-        self.__hash_func = hash_func
+    if GMPY:  # pragma: no branch
+
+        def __init__(self, p, a, d, h=None, hash_func=None):
+            """
+            The curve of points satisfying a*x^2 + y^2 = 1 + d*x^2*y^2 (mod p).
+
+            h is the cofactor of the curve.
+            hash_func is the hash function associated with the curve
+             (like SHA-512 for Ed25519)
+            """
+            self.__p = mpz(p)
+            self.__a = mpz(a)
+            self.__d = mpz(d)
+            self.__h = h
+            self.__hash_func = hash_func
+
+    else:
+
+        def __init__(self, p, a, d, h=None, hash_func=None):
+            """
+            The curve of points satisfying a*x^2 + y^2 = 1 + d*x^2*y^2 (mod p).
+
+            h is the cofactor of the curve.
+            hash_func is the hash function associated with the curve
+             (like SHA-512 for Ed25519)
+            """
+            self.__p = p
+            self.__a = a
+            self.__d = d
+            self.__h = h
+            self.__hash_func = hash_func
 
     def __eq__(self, other):
         """Returns True if other is an identical curve."""
@@ -263,6 +317,8 @@ class AbstractPoint(object):
         data[-1] &= 0x80 - 1
 
         y = bytes_to_int(data, "little")
+        if GMPY:
+            y = mpz(y)
 
         x2 = (
             (y * y - 1)
@@ -475,8 +531,12 @@ class PointJacobi(AbstractPoint):
         """
         super(PointJacobi, self).__init__()
         self.__curve = curve
-        self.__coords = (x, y, z)
-        self.__order = order
+        if GMPY:  # pragma: no branch
+            self.__coords = (mpz(x), mpz(y), mpz(z))
+            self.__order = order and mpz(order)
+        else:  # pragma: no branch
+            self.__coords = (x, y, z)
+            self.__order = order
         self.__generator = generator
         self.__precompute = []
 
@@ -571,7 +631,7 @@ class PointJacobi(AbstractPoint):
         """
         x1, y1, z1 = self.__coords
         if other is INFINITY:
-            return not y1 or not z1
+            return not z1
         if isinstance(other, Point):
             x2, y2, z2 = other.x(), other.y(), 1
         elif isinstance(other, PointJacobi):
@@ -661,11 +721,13 @@ class PointJacobi(AbstractPoint):
 
     def to_affine(self):
         """Return point in affine form."""
-        _, y, z = self.__coords
-        if not y or not z:
+        _, _, z = self.__coords
+        p = self.__curve.p()
+        if not (z % p):
             return INFINITY
         self.scale()
         x, y, z = self.__coords
+        assert z == 1
         return Point(self.__curve, x, y, self.__order)
 
     @staticmethod
@@ -697,7 +759,7 @@ class PointJacobi(AbstractPoint):
         # http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-mdbl-2007-bl
         XX, YY = X1 * X1 % p, Y1 * Y1 % p
         if not YY:
-            return 0, 0, 1
+            return 0, 0, 0
         YYYY = YY * YY % p
         S = 2 * ((X1 + YY) ** 2 - XX - YYYY) % p
         M = 3 * XX + a
@@ -711,13 +773,13 @@ class PointJacobi(AbstractPoint):
         """Add a point to itself, arbitrary z."""
         if Z1 == 1:
             return self._double_with_z_1(X1, Y1, p, a)
-        if not Y1 or not Z1:
-            return 0, 0, 1
+        if not Z1:
+            return 0, 0, 0
         # after:
         # http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-2007-bl
         XX, YY = X1 * X1 % p, Y1 * Y1 % p
         if not YY:
-            return 0, 0, 1
+            return 0, 0, 0
         YYYY = YY * YY % p
         ZZ = Z1 * Z1 % p
         S = 2 * ((X1 + YY) ** 2 - XX - YYYY) % p
@@ -733,14 +795,14 @@ class PointJacobi(AbstractPoint):
         """Add a point to itself."""
         X1, Y1, Z1 = self.__coords
 
-        if not Y1:
+        if not Z1:
             return INFINITY
 
         p, a = self.__curve.p(), self.__curve.a()
 
         X3, Y3, Z3 = self._double(X1, Y1, Z1, p, a)
 
-        if not Y3 or not Z3:
+        if not Z3:
             return INFINITY
         return PointJacobi(self.__curve, X3, Y3, Z3, self.__order)
 
@@ -824,10 +886,10 @@ class PointJacobi(AbstractPoint):
 
     def _add(self, X1, Y1, Z1, X2, Y2, Z2, p):
         """add two points, select fastest method."""
-        if not Y1 or not Z1:
-            return X2, Y2, Z2
-        if not Y2 or not Z2:
-            return X1, Y1, Z1
+        if not Z1:
+            return X2 % p, Y2 % p, Z2 % p
+        if not Z2:
+            return X1 % p, Y1 % p, Z1 % p
         if Z1 == Z2:
             if Z1 == 1:
                 return self._add_with_z_1(X1, Y1, X2, Y2, p)
@@ -855,7 +917,7 @@ class PointJacobi(AbstractPoint):
 
         X3, Y3, Z3 = self._add(X1, Y1, Z1, X2, Y2, Z2, p)
 
-        if not Y3 or not Z3:
+        if not Z3:
             return INFINITY
         return PointJacobi(self.__curve, X3, Y3, Z3, self.__order)
 
@@ -865,7 +927,7 @@ class PointJacobi(AbstractPoint):
 
     def _mul_precompute(self, other):
         """Multiply point by integer with precomputation table."""
-        X3, Y3, Z3, p = 0, 0, 1, self.__curve.p()
+        X3, Y3, Z3, p = 0, 0, 0, self.__curve.p()
         _add = self._add
         for X2, Y2 in self.__precompute:
             if other % 2:
@@ -878,7 +940,7 @@ class PointJacobi(AbstractPoint):
             else:
                 other //= 2
 
-        if not Y3 or not Z3:
+        if not Z3:
             return INFINITY
         return PointJacobi(self.__curve, X3, Y3, Z3, self.__order)
 
@@ -897,7 +959,7 @@ class PointJacobi(AbstractPoint):
 
         self = self.scale()
         X2, Y2, _ = self.__coords
-        X3, Y3, Z3 = 0, 0, 1
+        X3, Y3, Z3 = 0, 0, 0
         p, a = self.__curve.p(), self.__curve.a()
         _double = self._double
         _add = self._add
@@ -910,7 +972,7 @@ class PointJacobi(AbstractPoint):
             elif i > 0:
                 X3, Y3, Z3 = _add(X3, Y3, Z3, X2, Y2, 1, p)
 
-        if not Y3 or not Z3:
+        if not Z3:
             return INFINITY
 
         return PointJacobi(self.__curve, X3, Y3, Z3, self.__order)
@@ -939,7 +1001,7 @@ class PointJacobi(AbstractPoint):
             other_mul = other_mul % self.__order
 
         # (X3, Y3, Z3) is the accumulator
-        X3, Y3, Z3 = 0, 0, 1
+        X3, Y3, Z3 = 0, 0, 0
         p, a = self.__curve.p(), self.__curve.a()
 
         # as we have 6 unique points to work with, we can't scale all of them,
@@ -963,7 +1025,7 @@ class PointJacobi(AbstractPoint):
         # when the self and other sum to infinity, we need to add them
         # one by one to get correct result but as that's very unlikely to
         # happen in regular operation, we don't need to optimise this case
-        if not pApB_Y or not pApB_Z:
+        if not pApB_Z:
             return self * self_mul + other * other_mul
 
         # gmp object creation has cumulatively higher overhead than the
@@ -1008,7 +1070,7 @@ class PointJacobi(AbstractPoint):
                     assert B > 0
                     X3, Y3, Z3 = _add(X3, Y3, Z3, pApB_X, pApB_Y, pApB_Z, p)
 
-        if not Y3 or not Z3:
+        if not Z3:
             return INFINITY
 
         return PointJacobi(self.__curve, X3, Y3, Z3, self.__order)
@@ -1027,9 +1089,14 @@ class Point(AbstractPoint):
         """curve, x, y, order; order (optional) is the order of this point."""
         super(Point, self).__init__()
         self.__curve = curve
-        self.__x = x
-        self.__y = y
-        self.__order = order
+        if GMPY:
+            self.__x = x and mpz(x)
+            self.__y = y and mpz(y)
+            self.__order = order and mpz(order)
+        else:
+            self.__x = x
+            self.__y = y
+            self.__order = order
         # self.curve is allowed to be None only for INFINITY:
         if self.__curve:
             assert self.__curve.contains_point(x, y)
@@ -1087,6 +1154,8 @@ class Point(AbstractPoint):
 
         Note: only points that lay on the same curve can be equal.
         """
+        if other is INFINITY:
+            return self.__x is None or self.__y is None
         if isinstance(other, Point):
             return (
                 self.__curve == other.__curve
@@ -1153,7 +1222,12 @@ class Point(AbstractPoint):
         # From X9.62 D.3.2:
 
         e3 = 3 * e
-        negative_self = Point(self.__curve, self.__x, -self.__y, self.__order)
+        negative_self = Point(
+            self.__curve,
+            self.__x,
+            (-self.__y) % self.__curve.p(),
+            self.__order,
+        )
         i = leftmost_bit(e3) // 2
         result = self
         # print("Multiplying %s by %d (e3 = %d):" % (self, other, e3))
@@ -1180,7 +1254,6 @@ class Point(AbstractPoint):
 
     def double(self):
         """Return a new point that is twice the old."""
-
         if self == INFINITY:
             return INFINITY
 
@@ -1193,6 +1266,9 @@ class Point(AbstractPoint):
             (3 * self.__x * self.__x + a)
             * numbertheory.inverse_mod(2 * self.__y, p)
         ) % p
+
+        if not l:
+            return INFINITY
 
         x3 = (l * l - 2 * self.__x) % p
         y3 = (l * (self.__x - x3) - self.__y) % p
@@ -1229,8 +1305,12 @@ class PointEdwards(AbstractPoint):
         """
         super(PointEdwards, self).__init__()
         self.__curve = curve
-        self.__coords = (x, y, z, t)
-        self.__order = order
+        if GMPY:  # pragma: no branch
+            self.__coords = (mpz(x), mpz(y), mpz(z), mpz(t))
+            self.__order = order and mpz(order)
+        else:  # pragma: no branch
+            self.__coords = (x, y, z, t)
+            self.__order = order
         self.__generator = generator
         self.__precompute = []
 

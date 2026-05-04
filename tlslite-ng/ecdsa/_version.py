@@ -98,7 +98,9 @@ def run_command(
         if verbose:
             print("unable to find command, tried %s" % (commands,))
         return None, None
-    stdout = process.communicate()[0].strip().decode()
+    stdout = process.communicate()[0].strip()
+    if sys.version_info[0] >= 3:
+        stdout = stdout.decode()
     if process.returncode != 0:
         if verbose:
             print("unable to run %s (error)" % dispcmd)

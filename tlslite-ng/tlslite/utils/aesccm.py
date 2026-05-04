@@ -3,6 +3,7 @@
 # See the LICENSE file for legal information regarding use of this file.
 #
 
+from __future__ import division
 from tlslite.utils.cryptomath import numberToByteArray
 from tlslite.utils import python_aes
 

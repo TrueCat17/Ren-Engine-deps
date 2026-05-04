@@ -7,10 +7,10 @@
 
 """Class for setting handshake parameters."""
 
-from .constants import CertificateType
+from .constants import CertificateType, ECPointFormat
 from .utils import cryptomath
 from .utils import cipherfactory
-from .utils.compat import ecdsaAllCurves, int_types
+from .utils.compat import ecdsaAllCurves, int_types, ML_KEM_AVAILABLE
 
 CIPHER_NAMES = ["chacha20-poly1305",
                 "aes256gcm", "aes128gcm",
@@ -31,14 +31,24 @@ RSA_SIGNATURE_HASHES = ["sha512", "sha384", "sha256", "sha224", "sha1"]
 DSA_SIGNATURE_HASHES = ["sha512", "sha384", "sha256", "sha224", "sha1"]
 ECDSA_SIGNATURE_HASHES = ["sha512", "sha384", "sha256", "sha224", "sha1"]
 ALL_RSA_SIGNATURE_HASHES = RSA_SIGNATURE_HASHES + ["md5"]
-SIGNATURE_SCHEMES = ["Ed25519", "Ed448"]
+SIGNATURE_SCHEMES = ["Ed25519", "Ed448",
+                     "ecdsa_brainpoolP512r1tls13_sha512",
+                     "ecdsa_brainpoolP384r1tls13_sha384",
+                     "ecdsa_brainpoolP256r1tls13_sha256"]
 RSA_SCHEMES = ["pss", "pkcs1"]
+CURVE_NAMES = []
+if ML_KEM_AVAILABLE:
+    CURVE_NAMES += ["secp256r1mlkem768", "x25519mlkem768",
+                    "secp384r1mlkem1024"]
 # while secp521r1 is the most secure, it's also much slower than the others
 # so place it as the last one
-CURVE_NAMES = ["x25519", "x448", "secp384r1", "secp256r1",
-               "secp521r1"]
-ALL_CURVE_NAMES = CURVE_NAMES + ["secp256k1", "brainpoolP512r1",
-                                 "brainpoolP384r1", "brainpoolP256r1"]
+CURVE_NAMES += ["x25519", "x448", "secp384r1", "secp256r1",
+                "secp521r1", "brainpoolP512r1",
+                "brainpoolP384r1", "brainpoolP256r1",
+                "brainpoolP256r1tls13",
+                "brainpoolP384r1tls13",
+                "brainpoolP512r1tls13"]
+ALL_CURVE_NAMES = CURVE_NAMES + ["secp256k1"]
 if ecdsaAllCurves:
     ALL_CURVE_NAMES += ["secp224r1", "secp192r1"]
 ALL_DH_GROUP_NAMES = ["ffdhe2048", "ffdhe3072", "ffdhe4096", "ffdhe6144",
@@ -56,11 +66,17 @@ CURVE_ALIASES = {"secp256r1": ('NIST256p', 'prime256v1', 'P-256'),
 TLS13_PERMITTED_GROUPS = ["secp256r1", "secp384r1", "secp521r1",
                           "x25519", "x448", "ffdhe2048",
                           "ffdhe3072", "ffdhe4096", "ffdhe6144",
-                          "ffdhe8192"]
+                          "ffdhe8192", "secp256r1mlkem768", "x25519mlkem768",
+                          "secp384r1mlkem1024", "brainpoolP256r1tls13",
+                          "brainpoolP384r1tls13", "brainpoolP512r1tls13"]
 KNOWN_VERSIONS = ((3, 0), (3, 1), (3, 2), (3, 3), (3, 4))
 TICKET_CIPHERS = ["chacha20-poly1305", "aes256gcm", "aes128gcm", "aes128ccm",
                   "aes128ccm_8", "aes256ccm", "aes256ccm_8"]
 PSK_MODES = ["psk_dhe_ke", "psk_ke"]
+EC_POINT_FORMATS = [ECPointFormat.ansiX962_compressed_prime,
+                    ECPointFormat.uncompressed]
+ALL_COMPRESSION_ALGOS_SEND = ["zlib"]
+ALL_COMPRESSION_ALGOS_RECEIVE = ["zlib"]
 
 
 class Keypair(object):
@@ -256,11 +272,14 @@ class HandshakeSettings(object):
         The allowed hashes are: "sha1", "sha224", "sha256",
         "sha384" and "sha512".
 
-    "vartype more_sig_schemes: list(str)
+    :vartype more_sig_schemes: list(str)
     :ivar more_sig_schemes: List of additional signatures schemes (ones
         that don't use RSA-PKCS#1 v1.5, RSA-PSS, DSA, or ECDSA) to advertise
         as supported.
-        Currently supported are: "Ed25519", and "Ed448".
+        Currently supported are: "Ed25519", "Ed448",
+        "ecdsa_brainpoolP256r1tls13_sha256",
+        "ecdsa_brainpoolP384r1tls13_sha384",
+        "ecdsa_brainpoolP512r1tls13_sha512".
 
     :vartype eccCurves: list(str)
     :ivar eccCurves: List of named curves that are to be advertised as
@@ -353,6 +372,24 @@ class HandshakeSettings(object):
     :vartype keyExchangeNames: list
     :ivar keyExchangeNames: Enabled key exchange types for the connection,
         influences selected cipher suites.
+
+    :vartype certificate_compression_send: list(str)
+    :ivar certificate_compression_send: a list of compression algorithms that
+        will be used to compress the certificate if compress_cerificate(27)
+        extension is supported in the handshake. This option is for when a
+        certificate was send/compressed by this peer.
+
+    :vartype certificate_compression_receive: list(str)
+    :ivar certificate_compression_receive: a list of compression algorithms
+        that will be used to compress the certificate if
+        compress_cerificate(27) extension is supported in the handshake. This
+        option is for when a certificate was received/decompressed by this
+        peer.
+
+
+    :vartype ec_point_formats: list
+    :ivar ec_point_formats: Enabled point format extension for
+     elliptic curves.
     """
 
     def _init_key_settings(self):
@@ -368,7 +405,11 @@ class HandshakeSettings(object):
         self.dhParams = None
         self.dhGroups = list(ALL_DH_GROUP_NAMES)
         self.defaultCurve = "secp256r1"
-        self.keyShares = ["secp256r1", "x25519"]
+        if ML_KEM_AVAILABLE:
+            self.keyShares = ["x25519mlkem768"]
+        else:
+            self.keyShares = []
+        self.keyShares += ["secp256r1", "x25519"]
         self.padding_cb = None
         self.use_heartbeat_extension = True
         self.heartbeat_response_callback = None
@@ -396,6 +437,12 @@ class HandshakeSettings(object):
         # resumed connections (as tickets are single-use in TLS 1.3
         self.ticket_count = 2
         self.record_size_limit = 2**14 + 1  # TLS 1.3 includes content type
+        self.ec_point_formats = list(EC_POINT_FORMATS)
+
+        # Certificate compression
+        self.certificate_compression_send = list(ALL_COMPRESSION_ALGOS_SEND)
+        self.certificate_compression_receive = \
+            list(ALL_COMPRESSION_ALGOS_RECEIVE)
 
     def __init__(self):
         """Initialise default values for settings."""
@@ -493,7 +540,7 @@ class HandshakeSettings(object):
                              .format(unknownDHGroup))
 
         # TLS 1.3 limits the allowed groups (RFC 8446,ch. 4.2.7.)
-        if other.maxVersion == (3, 4):
+        if (3, 3) not in other.versions and (3, 4) in other.versions:
             forbiddenGroup = HandshakeSettings._not_matching(other.eccCurves, TLS13_PERMITTED_GROUPS)
             if forbiddenGroup:
                 raise ValueError("The following enabled groups are forbidden in TLS 1.3: {0}"
@@ -582,6 +629,8 @@ class HandshakeSettings(object):
     @staticmethod
     def _sanityCheckExtensions(other):
         """Check if set extension settings are sane"""
+        not_matching = HandshakeSettings._not_matching
+
         if other.useEncryptThenMAC not in (True, False):
             raise ValueError("useEncryptThenMAC can only be True or False")
 
@@ -599,7 +648,41 @@ class HandshakeSettings(object):
                 not 64 <= other.record_size_limit <= 2**14 + 1:
             raise ValueError("record_size_limit cannot exceed 2**14+1 bytes")
 
+        bad_ec_ext = [ECPointFormat.toStr(rep) for rep in other.ec_point_formats if
+                      rep not in EC_POINT_FORMATS]
+        if bad_ec_ext:
+            raise ValueError("Unknown EC point format provided: "
+                             "{0}".format(bad_ec_ext))
+        if ECPointFormat.uncompressed not in other.ec_point_formats:
+            raise ValueError("Uncompressed EC point format is not provided")
+
         HandshakeSettings._sanityCheckEMSExtension(other)
+
+        if other.certificate_compression_send:
+            try:
+                unknownAlgos = not_matching(
+                    other.certificate_compression_send,
+                    ALL_COMPRESSION_ALGOS_SEND)
+            except TypeError:
+                raise ValueError("certificate_compression must be an iterable "
+                                 "of strings")
+
+            if unknownAlgos:
+                raise ValueError("Unknown compression algorithm: '{0}'"
+                                 .format(unknownAlgos))
+
+        if other.certificate_compression_receive:
+            try:
+                unknownAlgos = not_matching(
+                    other.certificate_compression_receive,
+                    ALL_COMPRESSION_ALGOS_RECEIVE)
+            except TypeError:
+                raise ValueError("certificate_compression must be an iterable "
+                                 "of strings")
+
+            if unknownAlgos:
+                raise ValueError("Unknown compression algorithm: '{0}'"
+                                 .format(unknownAlgos))
 
     @staticmethod
     def _not_allowed_len(values, sieve):
@@ -667,6 +750,7 @@ class HandshakeSettings(object):
         other.sendFallbackSCSV = self.sendFallbackSCSV
         other.useEncryptThenMAC = self.useEncryptThenMAC
         other.usePaddingExtension = self.usePaddingExtension
+        other.ec_point_formats = self.ec_point_formats
         # session tickets
         other.padding_cb = self.padding_cb
         other.ticketKeys = self.ticketKeys
@@ -675,6 +759,9 @@ class HandshakeSettings(object):
         other.max_early_data = self.max_early_data
         other.ticket_count = self.ticket_count
         other.record_size_limit = self.record_size_limit
+        other.certificate_compression_send = self.certificate_compression_send
+        other.certificate_compression_receive = \
+            self.certificate_compression_receive
 
     @staticmethod
     def _remove_all_matches(values, needle):

@@ -1,0 +1,11 @@
+/doc/
+/fuzz/
+/java/
+/sharedlib/
+/simd/arm/
+/simd/mips/
+/simd/mips64/
+/simd/powerpc/
+/testimages/
+
+/ChangeLog.md

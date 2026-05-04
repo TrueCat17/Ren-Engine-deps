@@ -29,6 +29,9 @@ iv  -> Initialization Vector in bytes. Length must be 8 bytes.
 import sys
 import warnings
 
+# PY_VER is used to handle Python2 and Python3 differences.
+PY_VER = sys.version_info
+
 
 def new(key, iv):
     """Operate this 3DES cipher."""
@@ -49,16 +52,22 @@ class _baseDes(object):
         Otherwise there is no way to correctly decode the data into bytes.
         """
 
-        if isinstance(data, str):
-            warnings.warn("Only bytes, bytearray or memoryview "
-                            "objects of them should be passed",
-                            DeprecationWarning,
-                            stacklevel=3)
-            # Only accept ascii unicode values.
-            try:
-                return data.encode('ascii')
-            except UnicodeEncodeError:
-                raise ValueError("The Unicode string shouldn't be passed")
+        if PY_VER < (3, ):
+            if isinstance(data, unicode):
+                raise ValueError("Only bytes, bytearray or memoryview "
+                                 "objects of them should be passed, "
+                                 "not Unicode strings")
+        else:
+            if isinstance(data, str):
+                warnings.warn("Only bytes, bytearray or memoryview "
+                              "objects of them should be passed",
+                              DeprecationWarning,
+                              stacklevel=3)
+                # Only accept ascii unicode values.
+                try:
+                    return data.encode('ascii')
+                except UnicodeEncodeError:
+                    raise ValueError("The Unicode string shouldn't be passed")
         return data
 
 #############################################
@@ -212,6 +221,11 @@ class Des(_baseDes):
     def __string_to_bitlist(self, data):
         """Turn the string data into a list of bits (1, 0)'s."""
 
+        if PY_VER < (3, ):
+            # Turn the strings into integers. Python 3 uses a bytes
+            # class, which already has this behaviour
+            if not isinstance(data, bytearray):
+                data = [ord(c) for c in data]
         len_data = len(data) * 8
         result = [0] * len_data
         pos = 0
@@ -239,7 +253,10 @@ class Des(_baseDes):
                 c = 0
             pos += 1
 
-        return bytes(result)
+        if PY_VER < (3, ):
+            return ''.join([chr(c) for c in result])
+        else:
+            return bytes(result)
 
     def __permutate(self, table, block):
         """Permutate this block with the specified table."""

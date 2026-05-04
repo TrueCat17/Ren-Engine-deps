@@ -1,3 +1,5 @@
+from __future__ import division
+
 from . import der, ecdsa, ellipticcurve, eddsa
 from .util import orderlen, number_to_string, string_to_number
 from ._compat import normalise_bytes, bit_length

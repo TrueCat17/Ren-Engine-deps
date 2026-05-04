@@ -43,19 +43,28 @@ int32_t ZNG_CONDEXPORT PREFIX(inflateBackInit)(PREFIX3(stream) *strm, int32_t wi
     }
     if (strm->zfree == NULL)
         strm->zfree = PREFIX(zcfree);
-    state = ZALLOC_INFLATE_STATE(strm);
-    if (state == NULL)
+
+    inflate_allocs *alloc_bufs = alloc_inflate(strm);
+    if (alloc_bufs == NULL)
         return Z_MEM_ERROR;
+
+    state = alloc_bufs->state;
+    state->alloc_bufs = alloc_bufs;
     Tracev((stderr, "inflate: allocated\n"));
+
     strm->state = (struct internal_state *)state;
-    state->dmax = 32768U;
     state->wbits = (unsigned int)windowBits;
     state->wsize = 1U << windowBits;
+    state->wbufsize = 1U << windowBits;
     state->window = window;
     state->wnext = 0;
     state->whave = 0;
+#ifdef INFLATE_STRICT
+    state->dmax = 32768U;
+#endif
+#ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR
     state->sane = 1;
-    state->chunksize = functable.chunksize();
+#endif
     return Z_OK;
 }
 
@@ -92,7 +101,7 @@ int32_t Z_EXPORT PREFIX(inflateBackInit_)(PREFIX3(stream) *strm, int32_t windowB
     do { \
         PULL(); \
         have--; \
-        hold += ((unsigned)(*next++) << bits); \
+        hold += ((uint64_t)(*next++) << bits); \
         bits += 8; \
     } while (0)
 
@@ -144,8 +153,8 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
     z_const unsigned char *next; /* next input */
     unsigned char *put;          /* next output */
     unsigned have, left;         /* available input and output */
-    uint32_t hold;               /* bit buffer */
-    unsigned bits;               /* bits in bit buffer */
+    uint64_t hold;               /* bit buffer */
+    bits_t bits;                 /* bits in bit buffer */
     unsigned copy;               /* number of stored or match bytes to copy */
     unsigned char *from;         /* where to copy match bytes from */
     code here;                   /* current decoding table entry */
@@ -357,7 +366,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
                 RESTORE();
                 if (state->whave < state->wsize)
                     state->whave = state->wsize - left;
-                functable.inflate_fast(strm, state->wsize);
+                FUNCTABLE_CALL(inflate_fast)(strm, state->wsize);
                 LOAD();
                 break;
             }
@@ -365,28 +374,28 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
             /* get a literal, length, or end-of-block code */
             for (;;) {
                 here = state->lencode[BITS(state->lenbits)];
-                if (here.bits <= bits)
+                if (CODE_BITS(here) <= bits)
                     break;
                 PULLBYTE();
             }
             if (here.op && (here.op & 0xf0) == 0) {
+                unsigned last_bits;
                 last = here;
+                last_bits = CODE_BITS(last);
                 for (;;) {
-                    here = state->lencode[last.val + (BITS(last.bits + last.op) >> last.bits)];
-                    if ((unsigned)last.bits + (unsigned)here.bits <= bits)
+                    here = state->lencode[last.val + (BITS(last_bits + (last.op & 15)) >> last_bits)];
+                    if (last_bits + CODE_BITS(here) <= bits)
                         break;
                     PULLBYTE();
                 }
-                DROPBITS(last.bits);
+                DROPBITS(last_bits);
             }
-            DROPBITS(here.bits);
+            DROPBITS(CODE_BITS(here));
             state->length = here.val;
 
             /* process literal */
             if ((int)(here.op) == 0) {
-                Tracevv((stderr, here.val >= 0x20 && here.val < 0x7f ?
-                        "inflate:         literal '%c'\n" :
-                        "inflate:         literal 0x%02x\n", here.val));
+                TRACE_LITERAL(here.val);
                 ROOM();
                 *put++ = (unsigned char)(state->length);
                 left--;
@@ -396,7 +405,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
 
             /* process end of block */
             if (here.op & 32) {
-                Tracevv((stderr, "inflate:         end of block\n"));
+                TRACE_END_OF_BLOCK();
                 state->mode = TYPE;
                 break;
             }
@@ -408,38 +417,40 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
             }
 
             /* length code -- get extra bits, if any */
-            state->extra = (here.op & MAX_BITS);
+            state->extra = CODE_EXTRA(here);
             if (state->extra) {
                 NEEDBITS(state->extra);
                 state->length += BITS(state->extra);
                 DROPBITS(state->extra);
             }
-            Tracevv((stderr, "inflate:         length %u\n", state->length));
+            TRACE_LENGTH(state->length);
 
             /* get distance code */
             for (;;) {
                 here = state->distcode[BITS(state->distbits)];
-                if (here.bits <= bits)
+                if (CODE_BITS(here) <= bits)
                     break;
                 PULLBYTE();
             }
             if ((here.op & 0xf0) == 0) {
+                unsigned last_bits;
                 last = here;
+                last_bits = CODE_BITS(last);
                 for (;;) {
-                    here = state->distcode[last.val + (BITS(last.bits + last.op) >> last.bits)];
-                    if ((unsigned)last.bits + (unsigned)here.bits <= bits)
+                    here = state->distcode[last.val + (BITS(last_bits + (last.op & 15)) >> last_bits)];
+                    if (last_bits + CODE_BITS(here) <= bits)
                         break;
                     PULLBYTE();
                 }
-                DROPBITS(last.bits);
+                DROPBITS(last_bits);
             }
-            DROPBITS(here.bits);
+            DROPBITS(CODE_BITS(here));
             if (here.op & 64) {
                 SET_BAD("invalid distance code");
                 break;
             }
             state->offset = here.val;
-            state->extra = (here.op & MAX_BITS);
+            state->extra = CODE_EXTRA(here);
 
             /* get distance extra bits, if any */
             if (state->extra) {
@@ -453,7 +464,7 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
                 break;
             }
 #endif
-            Tracevv((stderr, "inflate:         distance %u\n", state->offset));
+            TRACE_DISTANCE(state->offset);
 
             /* copy match from window to output */
             do {
@@ -504,8 +515,10 @@ int32_t Z_EXPORT PREFIX(inflateBack)(PREFIX3(stream) *strm, in_func in, void *in
 int32_t Z_EXPORT PREFIX(inflateBackEnd)(PREFIX3(stream) *strm) {
     if (strm == NULL || strm->state == NULL || strm->zfree == NULL)
         return Z_STREAM_ERROR;
-    ZFREE_STATE(strm, strm->state);
-    strm->state = NULL;
+
+    /* Free allocated buffers */
+    free_inflate(strm);
+
     Tracev((stderr, "inflate: end\n"));
     return Z_OK;
 }

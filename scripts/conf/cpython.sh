@@ -8,8 +8,13 @@ if [[ `echo $(uname -a) | tr '[A-Z]' '[a-z]'` =~ "cygwin" ]]; then
 	shared="--enable-shared" # for no error on cygwin
 fi
 
+optimizations="--enable-optimizations"
+if [ "$optimizations" != "--disable-optimizations" ]; then
+	export LIBS="-lgcov"
+fi
+
 ./configure "$shared" \
-	--enable-optimizations \
-	--with-lto
+	"$optimizations" \
+	--with-lto \
 
 make clean

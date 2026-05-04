@@ -1,18 +1,25 @@
 #!/bin/bash
 set -e
 
-tmp="x-flto"
-if [[ "$tmp" == "x" ]]; then
-	threads="-j4" # usual, enable multi-threading
-else
-	threads="-j1" # hard optimizations, needs a lot of memory, disable multi-threading
-fi
-
-./Modules/makesetup -c Modules/config.c.in -s Modules ../../scripts/Setup.local
+# 3 of makesetup params without of end '/'
+./Modules/makesetup -c ./Modules/config.c.in -s ./Modules ../../scripts/Setup.local
 mv config.c ./Modules/
 
-make "$threads" LDFLAGS="-lm"
-cp ./libpython3.11.a ../000res
 
-#cp ./libpython3.12.a ../000res
-#cp ./Modules/_hacl/libHacl_Hash_SHA2.a ../000res
+tmp_lto="-flto"
+tmp_pgo="--enable-optimizations"
+if [ -z "$tmp_lto" ] && [ "$tmp_pgo" == "--disable-optimizations" ]; then
+	# usual, enable multi-threading
+	threads="-j4"
+else
+	# hard optimizations, needs a lot of memory, disable multi-threading
+	# also, bug in python build system or gcc: race condition on writing profiling (*.gdca) files in multithread mode
+	threads="-j1"
+fi
+
+make "$threads"
+cp ./libpython3.14.a ../000res/
+
+hacl_lib="./Modules/_hacl/libHacl_HMAC.a"
+make "$hacl_lib" "$threads"
+cp "$hacl_lib" ../000res/

@@ -48,6 +48,8 @@ export LDFLAGS="-lm -flto"
 	--disable-cuda-llvm \
 	--disable-vaapi \
 	--disable-v4l2-m2m \
-	--disable-vulkan
+	--disable-vulkan \
+
+sed -i "s/HAVE_BCRYPT 1/HAVE_BCRYPT 0/" config.h
 	
 make clean

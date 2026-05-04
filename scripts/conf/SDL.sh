@@ -5,50 +5,66 @@ export CC="gcc"
 export CFLAGS="-O2 -flto"
 export LDFLAGS="-lm -flto"
 
+rm -rf ./build/
+mkdir ./build/
+cd ./build/
 
-shared_static="--disable-shared --enable-static"
-if [[ `echo $(uname -a) | tr '[A-Z]' '[a-z]'` =~ "cygwin" ]]; then
-	CC="i686-w64-mingw32-gcc" # cygwin-SDL crashes on using opengl, use mingw
-	shared_static="--enable-shared --disable-static" # mingw static lib is unsupported by cygwin => make shared
-	LDFLAGS="$LDFLAGS -Wl,-s"
-fi
-
-
-./configure \
-	--enable-sse2 \
-	--disable-sse3 \
+cmake .. -G "Unix Makefiles" \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DSDL_TEST_LIBRARY=0 \
+	-DSDL_SHARED=0 \
+	-DSDL_STATIC=1 \
 	\
-	--libdir="$PWD/build/.libs" \
+	-DSDL_AVX=0 \
+	-DSDL_AVX2=0 \
+	-DSDL_AVX512F=0 \
 	\
-	$shared_static \
+	-DSDL_MMX=1 \
+	-DSDL_SSE=1 \
+	-DSDL_SSE2=1 \
+	-DSDL_SSE3=1 \
+	-DSDL_SSE4_1=1 \
+	-DSDL_SSE4_2=1 \
 	\
-	--disable-joystick \
-	--disable-haptic \
-	--disable-sensor \
-	--disable-power \
+	-DSDL_ALSA=1 \
+	-DSDL_PULSEAUDIO=1 \
+	-DSDL_DISKAUDIO=0 \
+	-DSDL_OSS=0 \
+	-DSDL_JACK=0 \
+	-DSDL_PIPEWIRE=0 \
+	-DSDL_SNDIO=0 \
 	\
-	--disable-oss --disable-jack --disable-sndio --disable-esd \
-	--disable-alsatest --disable-esdtest \
-	--disable-arts --disable-nas --disable-fusionsound --disable-diskaudio \
-	--disable-libsamplerate \
+	-DSDL_OPENGL=1 \
+	-DSDL_OPENGLES=0 \
+	-DSDL_DIRECTX=0 \
+	-DSDL_VULKAN=0 \
+	-DSDL_RENDER_VULKAN=0 \
+	-DSDL_KMSDRM=0 \
+	-DSDL_OFFSCREEN=0 \
 	\
-	--disable-video-wayland \
-	--disable-video-rpi \
-	--disable-video-x11-scrnsaver \
-	--disable-video-vivante \
-	--disable-video-cocoa \
-	--disable-render-metal \
-	--disable-video-vulkan \
-	--disable-video-directfb \
-	--disable-directx \
-	--disable-wasapi \
-	--disable-video-opengles \
-	--disable-video-opengles1 \
-	--disable-video-opengles2 \
+	-DSDL_GPU=0 \
+	-DSDL_RENDER_GPU=0 \
+	-DSDL_CAMERA=0 \
+	-DSDL_DUMMYCAMERA=0 \
+	-DSDL_JOYSTICK=0 \
+	-DSDL_HAPTIC=0 \
+	-DSDL_HIDAPI=0 \
+	-DSDL_POWER=0 \
+	-DSDL_SENSOR=0 \
+	-DSDL_DIALOG=0 \
+	-DSDL_TRAY=0 \
+	-DSDL_VIRTUAL_JOYSTICK=0 \
 	\
-	--disable-video-x11-xdbe \
+	-DSDL_X11_XSCRNSAVER=0 \
+	-DSDL_X11_XDBE=0 \
+	-DSDL_X11_XINPUT=0 \
+	-DSDL_X11_XFIXES=0 \
+	-DSDL_X11_XTEST=0 \
 	\
-	--disable-rpath \
-	--disable-render-d3d
+	-DSDL_WAYLAND=0 \
+	\
+	-DSDL_RPATH=0 \
+	-DSDL_FRIBIDI=0 \
+	-DSDL_LIBTHAI=0 \
 
 make clean

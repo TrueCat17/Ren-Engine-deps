@@ -22,6 +22,7 @@
 #include "libavutil/avassert.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
+#include "demux.h"
 #include "iamf.h"
 #include "iamf_reader.h"
 #include "iamf_parse.h"
@@ -108,7 +109,7 @@ static int iamf_read_header(AVFormatContext *s)
 
             if (!i && !j && audio_element->layers[0].substream_count == 1)
                 st->disposition |= AV_DISPOSITION_DEFAULT;
-            else
+            else if (audio_element->nb_layers > 1 || audio_element->layers[0].substream_count > 1)
                 st->disposition |= AV_DISPOSITION_DEPENDENT;
             st->id = substream->audio_substream_id;
             avpriv_set_pts_info(st, 64, 1, st->codecpar->sample_rate);
@@ -153,6 +154,9 @@ static int iamf_read_header(AVFormatContext *s)
         }
     }
 
+    if (!s->nb_streams)
+        return AVERROR_INVALIDDATA;
+
     return 0;
 }
 
@@ -161,7 +165,7 @@ static int iamf_read_packet(AVFormatContext *s, AVPacket *pkt)
     IAMFDemuxContext *const c = s->priv_data;
     int ret;
 
-    ret = ff_iamf_read_packet(s, c, s->pb, INT_MAX, pkt);
+    ret = ff_iamf_read_packet(s, c, s->pb, INT_MAX, 0, pkt);
     if (ret < 0)
         return ret;
 
@@ -177,15 +181,15 @@ static int iamf_read_close(AVFormatContext *s)
     return 0;
 }
 
-const AVInputFormat ff_iamf_demuxer = {
-    .name           = "iamf",
-    .long_name      = NULL_IF_CONFIG_SMALL("Raw Immersive Audio Model and Formats"),
+const FFInputFormat ff_iamf_demuxer = {
+    .p.name         = "iamf",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Raw Immersive Audio Model and Formats"),
+    .p.extensions   = "iamf",
+    .p.flags        = AVFMT_GENERIC_INDEX | AVFMT_NO_BYTE_SEEK | AVFMT_NOTIMESTAMPS | AVFMT_SHOW_IDS,
     .priv_data_size = sizeof(IAMFDemuxContext),
-    .flags_internal = FF_FMT_INIT_CLEANUP,
+    .flags_internal = FF_INFMT_FLAG_INIT_CLEANUP,
     .read_probe     = iamf_probe,
     .read_header    = iamf_read_header,
     .read_packet    = iamf_read_packet,
     .read_close     = iamf_read_close,
-    .extensions     = "iamf",
-    .flags          = AVFMT_GENERIC_INDEX | AVFMT_NO_BYTE_SEEK | AVFMT_NOTIMESTAMPS | AVFMT_SHOW_IDS,
 };

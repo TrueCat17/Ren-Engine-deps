@@ -4,69 +4,53 @@ import os
 from config import *
 
 def copy(cmd):
-	dirs = {}
-	for i in os.listdir(sources_path):
-		if not os.path.isdir(sources_path + '/' + i):
-			continue
-			
-		for lib in libs:
-			if i.startswith(lib) and not i.startswith(lib + '_'):
-				dirs[lib] = i
-	
-	exit = False
+	ok = True
 	for lib in libs:
-		if lib not in dirs.keys():
-			print('<' + lib + '> path not found')
-			exit = True
-	if exit:
+		if not os.path.isdir(sources_path + lib):
+			print('Path for <%s> not found' % lib)
+			ok = False
+	if not ok:
 		os.sys.exit(1)
 	
 	
-	for lib in os.listdir(scripts_path + cmd):
-		name = lib[:-3]
-		for i in os.listdir(sources_path):
-			if i.startswith(name) and not i.startswith(name + '_'):
-				name = i
-				break
-		else:
-			continue
+	for f in os.listdir(scripts_path + cmd):
+		if not f.endswith('.sh'): continue
 		
-		src = scripts_path + cmd + '/' + lib
+		name = f[:-len('.sh')]
+		
+		src = scripts_path + cmd + '/' + f
 		dst = sources_path + name + '/' + cmd + '.sh'
 		
-		f = open(src, 'rb')
-		content = str(f.read(), 'utf8')
+		with open(src, 'rb') as f:
+			content = str(f.read(), 'utf-8')
 		
-		content = content.replace('CC="gcc"', 'CC="' + cc + '"')
+		content = content.replace('CC="gcc"', 'CC="%s"' % cc)
 		
-		if lto != 'enabled':
+		if not lto:
 			content = content.replace('--with-lto', '--without-lto')
 			content = content.replace('-flto', '')
+		
+		if not pgo:
 			content = content.replace('--enable-optimizations', '--disable-optimizations')
 		
-		content = content.replace('000res', '../' + path)
+		content = content.replace('000res/', copy_libs_to)
 		
-		content = content.replace('-j4', '-j' + str(count_threads))
+		content = content.replace('-j4', '-j%i' % count_threads)
 		
-		for script in ('autogen.sh', 'configure'):
-			content = content.replace('\n./' + script, '\nchmod +x ./' + script + '\n./' + script)
+		with open(dst, 'wb') as f:
+			f.write(bytes(content, 'utf-8'))
 		
-		for dep in dirs:
-			lib_var = '\n' + dep.upper() + '_DIR='
-			start = content.find(lib_var)
-			if start != -1:
-				end = content.find('\n', start + len(lib_var))
-				content = content[:start] + lib_var + '"' + dirs[dep] + '"' + content[end:]
+		os.system('chmod +x "%s"' % dst)
 		
-		f = open(dst, 'wb')
-		f.write(bytes(content, 'utf8'))
-		
-		os.system('chmod +x "' + dst + '"')
+		for script in ('./autogen.sh', './configure'):
+			path = sources_path + name + '/' + script
+			if os.path.exists(path):
+				os.system('chmod +x "%s"' % path)
 
 
 def set_platform():
 	global platform, cc
-	print('1/5: Platform')
+	print('1/6: Platform')
 	
 	if 'linux' in os.sys.platform:
 		print('Choose platform:')
@@ -74,55 +58,58 @@ def set_platform():
 		print('2. x86_64 (x64)')
 		
 		action = input('Input number of action (empty = auto): ')
-		if action == '1':
-			platform = 'linux-i686'
-		elif action == '2':
-			platform = 'linux-x86_64'
-		else:
-			platform = 'linux-' + ('x86_64' if os.sys.maxsize > 2**32 else 'i686')
+		if action not in ('1', '2'):
+			action = '2' if os.sys.maxsize > 2**32 else '1'
 		
-		if platform == 'linux-i686':
-			cc = 'i686-linux-gnu-gcc'
-		else:
-			cc = 'x86_64-linux-gnu-gcc'
+		platform =   'linux-i686' if action == '1' else 'linux-x86_64'
+		cc = 'i686-linux-gnu-gcc' if action == '1' else 'x86_64-linux-gnu-gcc'
 	
 	else:
 		platform = 'win32'
 		cc = 'i686-pc-cygwin-gcc'
 	
-	print('  platform  =', platform)
-	print('  compilier =', cc)
+	print('  platform  = %s' % platform)
+	print('  compilier = %s' % cc)
 	print()
 	
-	if os.system('command -v ' + cc + ' > /dev/null'):
-		print('Compilier <' + cc + '> not found')
+	if os.system('command -v %s > /dev/null' % cc):
+		print('Compilier <%s> not found' % cc)
 		os.sys.exit(1)
 
 
 def set_lto():
 	global lto
-	lto = 'disabled'
 	
-	print('2/5: LTO')
+	print('2/6: LTO')
 	if platform == 'win32':
-		print('Disabled for win32')
+		print('Disabled for win32.')
+		lto = False
 	else:
 		print('Link Time Optimization make building very slow.')
-		if input('Input 1 for enable LTO: ') == '1':
-			lto = 'enabled'
+		lto = input('Input 1 to enable LTO: ') == '1'
 	
-	global path
-	path = platform + '/' + ('lto' if lto == 'enabled' else 'no_lto')
-	if not os.path.exists(scripts_path + '../' + path):
-		os.makedirs(scripts_path + '../' + path)
+	global copy_libs_to
+	copy_libs_to = '../' + platform + '/' + ('lto' if lto else 'no_lto') + '/'
+	os.makedirs(scripts_path + copy_libs_to, exist_ok = True)
 	
-	print('  LTO:', lto)
+	print('  LTO: %s' % ('enabled' if lto else 'disabled'))
+	print()
+
+
+def set_pgo():
+	print('3/6: PGO for python')
+	print('Profile Guided Optimization make building very slow.')
+	
+	global pgo
+	pgo = input('Input 1 to enable PGO: ') == '1'
+	
+	print('  PGO: %s' % ('enabled' if pgo else 'disabled'))
 	print()
 
 
 def set_multithreading():
 	global count_threads
-	print('3/5: Multithreading')
+	print('4/6: Multithreading')
 	print('  Recommended use N build-threads on N-core PC.')
 	print('  But more threads require more memory.')
 	
@@ -131,13 +118,14 @@ def set_multithreading():
 		count_threads = int(answer)
 	else:
 		count_threads = os.cpu_count()
-	print('  Using', count_threads, 'threads')
+	print('  Using %i threads' % count_threads)
 	print()
 
 
 
 set_platform()
 set_lto()
+set_pgo()
 set_multithreading()
 
 write_params({
@@ -145,7 +133,7 @@ write_params({
 })
 
 
-print('4/5: Copy files to configure libs')
+print('5/6: Copy files to configure libs')
 copy('conf')
-print('5/5: Copy files to build libs')
+print('6/6: Copy files to build libs')
 copy('make')

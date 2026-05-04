@@ -6,7 +6,7 @@
 # Because we are extending the hashlib module, we need to import all its
 # fields to suppport the same uses
 # pylint: disable=unused-wildcard-import, wildcard-import
-from hashlib import md5, sha1, sha224, sha256, sha384, sha512
+from hashlib import *
 # pylint: enable=unused-wildcard-import, wildcard-import
 import hashlib
 

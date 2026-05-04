@@ -9,17 +9,17 @@ def read_progress():
 	if not os.path.exists(progress_path):
 		return res
 	
-	f = open(progress_path, 'rb')
-	for s in f:
-		lib, progress = str(s, 'utf8').strip().split(' ')
-		res.append((lib, progress))
+	with open(progress_path, 'rb') as f:
+		for s in f:
+			lib, progress = str(s, 'utf-8').strip().split(' ')
+			res.append((lib, progress))
 	
 	return res
 
 def write_progress(progress_list):
-	f = open(progress_path, 'wb')
-	for lib, progress in progress_list:
-		f.write(bytes(lib + ' ' + progress + '\n', 'utf8'))
+	with open(progress_path, 'wb') as f:
+		for lib, progress in progress_list:
+			f.write(bytes(lib + ' ' + progress + '\n', 'utf-8'))
 
 if __name__ == '__main__':
 	print('Choose need actions for all libs: ')

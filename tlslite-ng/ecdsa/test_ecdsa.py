@@ -1,8 +1,12 @@
+from __future__ import print_function
 import sys
 import hypothesis.strategies as st
 from hypothesis import given, settings, note, example
 
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import pytest
 from .ecdsa import (
     Private_key,
@@ -27,7 +31,10 @@ from .ellipticcurve import Point
 
 
 HYP_SETTINGS = {}
-HYP_SETTINGS["deadline"] = 5000
+# old hypothesis doesn't have the "deadline" setting
+if sys.version_info > (2, 7):  # pragma: no branch
+    # SEC521p is slow, allow long execution for it
+    HYP_SETTINGS["deadline"] = 5000
 
 
 class TestP192FromX9_62(unittest.TestCase):

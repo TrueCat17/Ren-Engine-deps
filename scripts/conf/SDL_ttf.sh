@@ -1,27 +1,29 @@
 #!/bin/bash
 set -e
 
-SDL_DIR="SDL2-2.0.10"
-FREETYPE_DIR="freetype-2.10.1"
-
 export CC="gcc"
-export CFLAGS="-O2 -flto -I$PWD/../$SDL_DIR/include -I$PWD/../$FREETYPE_DIR/include"
+export CFLAGS="-O2 -flto"
 export LDFLAGS="-lm -flto"
-export LIBS="-L$PWD/../000res/ -lfreetype -lbrotlidec -lbrotlicommon -lz"
 
-export SDL2_CONFIG="$PWD/../$SDL_DIR/sdl2-config"
+rm -rf ./build/
+mkdir ./build/
+cd ./build/
 
-./autogen.sh
-
-./configure \
-	--enable-static \
-	--disable-shared \
-	--disable-sdltest \
-	--disable-freetypetest \
-	--disable-freetype-builtin \
-	--disable-harfbuzz \
-	--disable-harfbuzz-builtin \
+cmake .. -G "Unix Makefiles" \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DBUILD_SHARED_LIBS=0 \
 	\
-	--with-ft-prefix=$PWD/../000res
+	-DSDLTTF_INSTALL=0 \
+	-DSDLTTF_VENDORED=0 \
+	-DSDLTTF_STRICT=1 \
+	\
+	-DSDLTTF_FREETYPE=1 \
+	-DSDLTTF_HARFBUZZ=0 \
+	-DSDLTTF_PLUTOSVG=0 \
+	\
+	-DSDL3_DIR="../SDL/build/" \
+	\
+	-DFREETYPE_LIBRARY="../../freetype/objs/.libs/libfreetype.a" \
+	-DFREETYPE_INCLUDE_DIRS="$PWD/../../freetype/include/" \
 
 make clean

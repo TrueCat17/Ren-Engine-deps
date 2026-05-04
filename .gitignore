@@ -8,20 +8,14 @@
 /scripts/params.txt
 /scripts/progress_list.txt
 
-/sources/brotli/out/
-/sources/libjpeg-turbo/build/
-/sources/libjpeg-turbo/jconfig.h
-/sources/libjpeg-turbo/jconfigint.h
-/sources/libjpeg-turbo/jversion.h
+/sources/*/build/
+
+/sources/libjpeg-turbo/src/jconfig.h
 
 /sources/ffmpeg/doc/config.texi
 /sources/ffmpeg/libavdevice/indev_list.c
 /sources/ffmpeg/libavdevice/outdev_list.c
 /sources/ffmpeg/libavfilter/filter_list.c
-
-/sources/SDL_image/SDL2_image.spec
-/sources/SDL_image/showanim
-/sources/SDL_ttf/SDL2_ttf.spec
 
 /sources/zlib-ng/test.c
 /sources/zlib-ng/zlib_name_mangling.h
@@ -42,4 +36,3 @@ make_out.txt
 help.txt
 
 configure~
-

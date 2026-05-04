@@ -33,6 +33,7 @@
 #include "libavutil/bprint.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/mathematics.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/rational.h"
@@ -276,10 +277,8 @@ static const char *get_extension_str(SegmentType type, int single_file)
 
 static int handle_io_open_error(AVFormatContext *s, int err, char *url) {
     DASHContext *c = s->priv_data;
-    char errbuf[AV_ERROR_MAX_STRING_SIZE];
-    av_strerror(err, errbuf, sizeof(errbuf));
     av_log(s, c->ignore_io_errors ? AV_LOG_WARNING : AV_LOG_ERROR,
-           "Unable to open %s for writing: %s\n", url, errbuf);
+           "Unable to open %s for writing: %s\n", url, av_err2str(err));
     return c->ignore_io_errors ? 0 : err;
 }
 
@@ -1321,7 +1320,7 @@ static int write_manifest(AVFormatContext *s, int final)
                     av_strlcat(codec_str, audio_codec_str, sizeof(codec_str));
                 }
                 get_hls_playlist_name(playlist_file, sizeof(playlist_file), NULL, i);
-                ff_hls_write_stream_info(st, c->m3u8_out, stream_bitrate,
+                ff_hls_write_stream_info(st, c->m3u8_out, stream_bitrate, 0,
                                          playlist_file, agroup,
                                          codec_str, NULL, NULL);
             }
@@ -1347,7 +1346,7 @@ static int write_manifest(AVFormatContext *s, int final)
                     continue;
                 av_strlcpy(codec_str, os->codec_str, sizeof(codec_str));
                 get_hls_playlist_name(playlist_file, sizeof(playlist_file), NULL, i);
-                ff_hls_write_stream_info(st, c->m3u8_out, stream_bitrate,
+                ff_hls_write_stream_info(st, c->m3u8_out, stream_bitrate, 0,
                                          playlist_file, NULL,
                                          codec_str, NULL, NULL);
             }
@@ -1544,11 +1543,6 @@ static int dash_init(AVFormatContext *s)
             return AVERROR_MUXER_NOT_FOUND;
         ctx->interrupt_callback    = s->interrupt_callback;
         ctx->opaque                = s->opaque;
-#if FF_API_AVFORMAT_IO_CLOSE
-FF_DISABLE_DEPRECATION_WARNINGS
-        ctx->io_close              = s->io_close;
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
         ctx->io_close2             = s->io_close2;
         ctx->io_open               = s->io_open;
         ctx->strict_std_compliance = s->strict_std_compliance;
@@ -1747,7 +1741,7 @@ static int dash_write_header(AVFormatContext *s)
             (ret = flush_init_segment(s, os)) < 0)
             return ret;
     }
-    return ret;
+    return 0;
 }
 
 static int add_segment(OutputStream *os, const char *file,
@@ -1869,9 +1863,8 @@ static void dashenc_delete_file(AVFormatContext *s, char *filename) {
     } else {
         int res = ffurl_delete(filename);
         if (res < 0) {
-            char errbuf[AV_ERROR_MAX_STRING_SIZE];
-            av_strerror(res, errbuf, sizeof(errbuf));
-            av_log(s, (res == AVERROR(ENOENT) ? AV_LOG_WARNING : AV_LOG_ERROR), "failed to delete %s: %s\n", filename, errbuf);
+            av_log(s, (res == AVERROR(ENOENT) ? AV_LOG_WARNING : AV_LOG_ERROR),
+                "failed to delete %s: %s\n", filename, av_err2str(res));
         }
     }
 }

@@ -27,7 +27,7 @@ Example for Debian:
 (or just `xorg-dev`, but it is not only needed packages).
 
 **If your OS is Windows**:
-* additionally install `mingw64-i686-gcc-core`,
+* additionally install `mingw64-i686-gcc-core` (if you want to compile a small start.exe yourself),
 * select common `automake` - with unspecifed version,
 * make sure that you have `i686-pc-cygwin-g++` (compiler for 32-bit) after installing.
 
@@ -101,7 +101,7 @@ You can edit to fix and run files `./conf.sh` and `./make.sh` in any lib.
 After it, don't forget to open `scripts/progress_list.txt` and to change status fixed lib to `configurated` or `maked`.  
 Also you can fix `scripts/%conf-or-make%/%lib%.sh` for `copy_sh.py`, that generates `*.sh`-files from this.
 
-Status of any lib in `scripts/progress_list.txt` can set to next values:
+Status of any lib in `scripts/progress_list.txt` can set to the next values:
 * `start` (need to configure - substep 1/2 of building),
 * `configurated` (need to make - substep 2/2 of building),
 * `maked` (built, ready to use).

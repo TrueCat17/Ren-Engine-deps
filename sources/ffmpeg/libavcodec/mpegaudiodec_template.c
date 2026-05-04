@@ -32,6 +32,7 @@
 #include "libavutil/crc.h"
 #include "libavutil/float_dsp.h"
 #include "libavutil/libm.h"
+#include "libavutil/mem.h"
 #include "libavutil/mem_internal.h"
 #include "libavutil/thread.h"
 
@@ -92,7 +93,7 @@ typedef struct MPADecodeContext {
     int err_recognition;
     AVCodecContext* avctx;
     MPADSPContext mpadsp;
-    void (*butterflies_float)(float *av_restrict v1, float *av_restrict v2, int len);
+    void (*butterflies_float)(float *restrict v1, float *restrict v2, int len);
     AVFrame *frame;
     uint32_t crc;
 } MPADecodeContext;
@@ -1769,7 +1770,7 @@ static av_cold int decode_init_mp3on4(AVCodecContext * avctx)
     else
         s->syncword = 0xfff00000;
 
-    /* Init the first mp3 decoder in standard way, so that all tables get builded
+    /* Init the first mp3 decoder in standard way, so that all tables get built
      * We replace avctx->priv_data with the context of the first decoder so that
      * decode_init() does not have to be changed.
      * Other decoders will be initialized here copying data from the first context

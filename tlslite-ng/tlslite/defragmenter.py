@@ -4,6 +4,8 @@
 
 """Helper package for handling fragmentation of messages."""
 
+from __future__ import generators
+
 from .utils.codec import Parser
 from .utils.deprecations import deprecated_attrs, deprecated_params
 

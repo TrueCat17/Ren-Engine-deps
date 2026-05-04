@@ -1,3 +1,5 @@
+from __future__ import with_statement, division
+
 import hashlib
 
 try:
@@ -146,15 +148,16 @@ def st_fuzzed_sig(draw, keys_and_sigs):  # pragma: no cover
 
 params = {}
 # not supported in hypothesis 2.0.0
-from hypothesis import HealthCheck
+if sys.version_info >= (2, 7):  # pragma: no branch
+    from hypothesis import HealthCheck
 
-# deadline=5s because NIST521p are slow to verify
-params["deadline"] = 5000
-params["suppress_health_check"] = [
-    HealthCheck.data_too_large,
-    HealthCheck.filter_too_much,
-    HealthCheck.too_slow,
-]
+    # deadline=5s because NIST521p are slow to verify
+    params["deadline"] = 5000
+    params["suppress_health_check"] = [
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+    ]
 if "--fast" in sys.argv:  # pragma: no cover
     params["max_examples"] = 20
 

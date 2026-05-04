@@ -27,7 +27,7 @@
 #elif defined(_WIN32)
 #  define LITTLE_ENDIAN 1234
 #  define BIG_ENDIAN 4321
-#  if defined(_M_IX86) || defined(_M_AMD64) || defined(_M_IA64) || defined (_M_ARM) || defined (_M_ARM64) || defined (_M_ARM64EC)
+#  if defined(ARCH_X86) || defined(ARCH_IA64) || defined(ARCH_ARM)
 #    define BYTE_ORDER LITTLE_ENDIAN
 #  else
 #    error Unknown endianness!
@@ -55,6 +55,36 @@
 #  endif
 #else
 #  include <endian.h>
+#endif
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+#  define Z_U16_TO_LE(x)    (x)
+#  define Z_U32_TO_LE(x)    (x)
+#  define Z_U64_TO_LE(x)    (x)
+#  define Z_U16_FROM_LE(x)  (x)
+#  define Z_U32_FROM_LE(x)  (x)
+#  define Z_U64_FROM_LE(x)  (x)
+#  define Z_U16_TO_BE(x)    ZSWAP16(x)
+#  define Z_U32_TO_BE(x)    ZSWAP32(x)
+#  define Z_U64_TO_BE(x)    ZSWAP64(x)
+#  define Z_U16_FROM_BE(x)  ZSWAP16(x)
+#  define Z_U32_FROM_BE(x)  ZSWAP32(x)
+#  define Z_U64_FROM_BE(x)  ZSWAP64(x)
+#elif BYTE_ORDER == BIG_ENDIAN
+#  define Z_U16_TO_LE(x)    ZSWAP16(x)
+#  define Z_U32_TO_LE(x)    ZSWAP32(x)
+#  define Z_U64_TO_LE(x)    ZSWAP64(x)
+#  define Z_U16_FROM_LE(x)  ZSWAP16(x)
+#  define Z_U32_FROM_LE(x)  ZSWAP32(x)
+#  define Z_U64_FROM_LE(x)  ZSWAP64(x)
+#  define Z_U16_TO_BE(x)    (x)
+#  define Z_U32_TO_BE(x)    (x)
+#  define Z_U64_TO_BE(x)    (x)
+#  define Z_U16_FROM_BE(x)  (x)
+#  define Z_U32_FROM_BE(x)  (x)
+#  define Z_U64_FROM_BE(x)  (x)
+#else
+#  error "Unknown byte order"
 #endif
 
 #endif

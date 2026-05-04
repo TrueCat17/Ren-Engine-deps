@@ -27,6 +27,8 @@ plaintext = r.decrypt(ciphertext)
 If any strings are of the wrong length a ValueError is thrown
 """
 
+from .deprecations import deprecated_class_name
+
 # ported from the Java reference code by Bram Cohen, bram@gawth.com, April 2001
 # this code is public domain, unless someone makes
 # an intellectual property claim against the reference
@@ -898,6 +900,7 @@ rcon = (0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80,
         0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4,
         0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91)
 
+@deprecated_class_name('rijndael')
 class Rijndael(object):
     """
     Implementation of the AES (formely known as Rijndael) block cipher.

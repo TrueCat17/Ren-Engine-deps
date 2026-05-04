@@ -42,11 +42,16 @@ typedef struct CUDADeviceContext {
 
 static const enum AVPixelFormat supported_formats[] = {
     AV_PIX_FMT_NV12,
+    AV_PIX_FMT_NV16,
     AV_PIX_FMT_YUV420P,
     AV_PIX_FMT_YUVA420P,
     AV_PIX_FMT_YUV444P,
     AV_PIX_FMT_P010,
     AV_PIX_FMT_P016,
+    AV_PIX_FMT_P210,
+    AV_PIX_FMT_P216,
+    AV_PIX_FMT_YUV444P10MSB,
+    AV_PIX_FMT_YUV444P12MSB,
     AV_PIX_FMT_YUV444P16,
     AV_PIX_FMT_0RGB32,
     AV_PIX_FMT_0BGR32,
@@ -170,8 +175,9 @@ static int cuda_frames_init(AVHWFramesContext *ctx)
         if (size < 0)
             return size;
 
-        ctx->internal->pool_internal = av_buffer_pool_init2(size, ctx, cuda_pool_alloc, NULL);
-        if (!ctx->internal->pool_internal)
+        ffhwframesctx(ctx)->pool_internal =
+            av_buffer_pool_init2(size, ctx, cuda_pool_alloc, NULL);
+        if (!ffhwframesctx(ctx)->pool_internal)
             return AVERROR(ENOMEM);
     }
 

@@ -1,4 +1,9 @@
-import unittest
+from __future__ import with_statement, division, print_function
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import os
 import shutil
 import subprocess
@@ -514,6 +519,23 @@ class ECDSA(unittest.TestCase):
         self.assertEqual(r, new_r)
         self.assertEqual(order - s, new_s)
 
+    def test_sigencode_der_canonize_with_close_to_half_order(self):
+        r = 13
+        order = SECP112r1.order
+        s = order // 2 + 1
+
+        regular_encode = sigencode_der(r, s, order)
+        canonical_encode = sigencode_der_canonize(r, s, order)
+
+        self.assertNotEqual(regular_encode, canonical_encode)
+
+        new_r, new_s = sigdecode_der(
+            sigencode_der_canonize(r, s, order), order
+        )
+
+        self.assertEqual(r, new_r)
+        self.assertEqual(order - s, new_s)
+
     def test_sig_decode_strings_with_invalid_count(self):
         with self.assertRaises(MalformedSignature):
             sigdecode_strings([b"one", b"two", b"three"], 0xFF)
@@ -850,6 +872,22 @@ class ECDSA(unittest.TestCase):
 
         self.assertIn("Invalid X9.62 encoding", str(exp.exception))
 
+    def test_hybrid_decoding_with_inconsistent_encoding_and_no_validation(
+        self,
+    ):
+        sk = SigningKey.from_secret_exponent(123456789)
+        vk = sk.verifying_key
+
+        enc = vk.to_string("hybrid")
+        self.assertEqual(enc[:1], b"\x06")
+        enc = b"\x07" + enc[1:]
+
+        b = VerifyingKey.from_string(
+            enc, valid_encodings=("hybrid",), validate_point=False
+        )
+
+        self.assertEqual(vk, b)
+
     def test_compressed_decoding_with_blocked_format(self):
         enc = (
             b"\x02"
@@ -891,6 +929,17 @@ class ECDSA(unittest.TestCase):
 
         with self.assertRaises(MalformedPointError):
             VerifyingKey.from_string(b"\x07" + enc)
+
+    def test_decoding_with_inconsistent_hybrid_odd_point(self):
+        sk = SigningKey.from_secret_exponent(123456791)
+        vk = sk.verifying_key
+
+        enc = vk.to_string("hybrid")
+        self.assertEqual(enc[:1], b"\x07")
+        enc = b"\x06" + enc[1:]
+
+        with self.assertRaises(MalformedPointError):
+            b = VerifyingKey.from_string(enc, valid_encodings=("hybrid",))
 
     def test_decoding_with_point_not_on_curve(self):
         enc = (
@@ -1854,7 +1903,10 @@ class Util(unittest.TestCase):
         seed = b"text"
         n = tta(seed, order)
         # known issue: https://github.com/warner/python-ecdsa/issues/221
-        self.assertEqual(n, 18)
+        if sys.version_info < (3, 0):  # pragma: no branch
+            self.assertEqual(n, 228)
+        else:  # pragma: no branch
+            self.assertEqual(n, 18)
 
     @settings(**HYP_SETTINGS)
     @given(st.integers(min_value=0, max_value=10**200))

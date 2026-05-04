@@ -8,7 +8,6 @@
 
 #include "zbuild.h"
 #include "zutil.h"
-#include "crc32.h"
 #include "deflate.h"
 #include "fallback_builtins.h"
 
@@ -24,6 +23,8 @@
 #  include "arch/s390/s390_functions.h"
 #elif defined(RISCV_FEATURES)
 #  include "arch/riscv/riscv_functions.h"
+#elif defined(LOONGARCH_FEATURES)
+#  include "arch/loongarch/loongarch_functions.h"
 #endif
 
 #endif

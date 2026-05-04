@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-cd ./out
+cd ./build/
 make -j4
 
-cp ./libbrotlicommon.a ../../000res
-cp ./libbrotlidec.a ../../000res
+cp ./libbrotlicommon.a ../../000res/
+cp ./libbrotlidec.a ../../000res/

@@ -7,12 +7,14 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
+#ifdef X86_FEATURES
+
 #include "zbuild.h"
 #include "x86_features.h"
 
-#ifdef _MSC_VER
-#  include <intrin.h>
-#else
+#if defined(HAVE_CPUID_MS)
+#   include <intrin.h>
+#elif defined(HAVE_CPUID_GNU)
 // Newer versions of GCC and clang come with cpuid.h
 #  include <cpuid.h>
 #  ifdef X86_HAVE_XSAVE_INTRIN
@@ -24,10 +26,8 @@
 #  endif
 #endif
 
-#include <string.h>
-
 static inline void cpuid(int info, unsigned* eax, unsigned* ebx, unsigned* ecx, unsigned* edx) {
-#ifdef _MSC_VER
+#if defined(HAVE_CPUID_MS)
     unsigned int registers[4];
     __cpuid((int *)registers, info);
 
@@ -35,14 +35,17 @@ static inline void cpuid(int info, unsigned* eax, unsigned* ebx, unsigned* ecx, 
     *ebx = registers[1];
     *ecx = registers[2];
     *edx = registers[3];
-#else
+#elif defined(HAVE_CPUID_GNU)
     *eax = *ebx = *ecx = *edx = 0;
     __cpuid(info, *eax, *ebx, *ecx, *edx);
+#else
+    /* When using this fallback, the faster SSE/AVX code is disabled */
+    *eax = *ebx = *ecx = *edx = 0;
 #endif
 }
 
 static inline void cpuidex(int info, int subinfo, unsigned* eax, unsigned* ebx, unsigned* ecx, unsigned* edx) {
-#ifdef _MSC_VER
+#if defined(HAVE_CPUID_MS)
     unsigned int registers[4];
     __cpuidex((int *)registers, info, subinfo);
 
@@ -50,19 +53,25 @@ static inline void cpuidex(int info, int subinfo, unsigned* eax, unsigned* ebx, 
     *ebx = registers[1];
     *ecx = registers[2];
     *edx = registers[3];
-#else
+#elif defined(HAVE_CPUID_GNU)
     *eax = *ebx = *ecx = *edx = 0;
     __cpuid_count(info, subinfo, *eax, *ebx, *ecx, *edx);
+#else
+    /* When using this fallback, the faster SSE/AVX code is disabled */
+    *eax = *ebx = *ecx = *edx = 0;
 #endif
 }
 
 static inline uint64_t xgetbv(unsigned int xcr) {
 #if defined(_MSC_VER) || defined(X86_HAVE_XSAVE_INTRIN)
     return _xgetbv(xcr);
-#else
+#elif defined(__GNUC__)
     uint32_t eax, edx;
     __asm__ ( ".byte 0x0f, 0x01, 0xd0" : "=a"(eax), "=d"(edx) : "c"(xcr));
     return (uint64_t)(edx) << 32 | eax;
+#else
+    /* When using this fallback, some of the faster code is disabled */
+    return 0;
 #endif
 }
 
@@ -75,6 +84,7 @@ void Z_INTERNAL x86_check_features(struct x86_cpu_features *features) {
 
     features->has_sse2 = edx & 0x4000000;
     features->has_ssse3 = ecx & 0x200;
+    features->has_sse41 = ecx & 0x80000;
     features->has_sse42 = ecx & 0x100000;
     features->has_pclmulqdq = ecx & 0x2;
 
@@ -86,21 +96,33 @@ void Z_INTERNAL x86_check_features(struct x86_cpu_features *features) {
     }
 
     if (maxbasic >= 7) {
+        // Reference: https://software.intel.com/sites/default/files/article/405250/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family.pdf
         cpuidex(7, 0, &eax, &ebx, &ecx, &edx);
 
-        // check BMI1 bit
-        // Reference: https://software.intel.com/sites/default/files/article/405250/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family.pdf
-        features->has_vpclmulqdq = ecx & 0x400;
+        // check BMI2 bit
+        features->has_bmi2 = ebx & 0x100;
 
         // check AVX2 bit if the OS supports saving YMM registers
         if (features->has_os_save_ymm) {
             features->has_avx2 = ebx & 0x20;
+            features->has_vpclmulqdq = ecx & 0x400;
         }
 
         // check AVX512 bits if the OS supports saving ZMM registers
         if (features->has_os_save_zmm) {
-            features->has_avx512 = ebx & 0x00010000;
+            features->has_avx512f = ebx & 0x00010000;
+            if (features->has_avx512f) {
+                // According to the Intel Software Developer's Manual, AVX512F must be enabled too in order to enable
+                // AVX512(DQ,BW,VL).
+                features->has_avx512dq = ebx & 0x00020000;
+                features->has_avx512bw = ebx & 0x40000000;
+                features->has_avx512vl = ebx & 0x80000000;
+            }
+            features->has_avx512_common = features->has_avx512f && features->has_avx512dq && features->has_avx512bw \
+              && features->has_avx512vl && features->has_bmi2;
             features->has_avx512vnni = ecx & 0x800;
         }
     }
 }
+
+#endif

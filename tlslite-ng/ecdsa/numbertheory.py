@@ -9,10 +9,9 @@
 #   2008.11.14: Use pow(base, exponent, modulus) for modular_exp.
 #               Make gcd and lcm accept arbitrarily many arguments.
 
+from __future__ import division
+
 import sys
-from functools import reduce
-
-
 import math
 import warnings
 import random
@@ -68,7 +67,7 @@ def polynomial_reduce_mod(poly, polymod, p):
 
     while len(poly) >= len(polymod):
         if poly[-1] != 0:
-            for i in range(2, len(polymod) + 1):
+            for i in xrange(2, len(polymod) + 1):
                 poly[-i] = (poly[-i] - poly[-1] * polymod[-i]) % p
         poly = poly[0:-1]
 
@@ -92,8 +91,8 @@ def polynomial_multiply_mod(m1, m2, polymod, p):
 
     # Add together all the cross-terms:
 
-    for i in range(len(m1)):
-        for j in range(len(m2)):
+    for i in xrange(len(m1)):
+        for j in xrange(len(m2)):
             prod[i + j] = (prod[i + j] + m1[i] * m2[j]) % p
 
     return polynomial_reduce_mod(prod, polymod, p)
@@ -194,7 +193,7 @@ def square_root_mod_prime(a, p):
         return (2 * a * pow(4 * a, (p - 5) // 8, p)) % p
 
     range_top = p
-    for b in range(2, range_top):  # pragma: no branch
+    for b in xrange(2, range_top):  # pragma: no branch
         if jacobi(b * b - 4 * a, p) == -1:
             f = (a, -b, 1)
             ff = polynomial_exp_mod((0, 1), (p + 1) // 2, f, p)
@@ -203,6 +202,7 @@ def square_root_mod_prime(a, p):
             return ff[0]
     # just an assertion
     raise RuntimeError("No b found.")  # pragma: no cover
+
 
 
 def inverse_mod(a, m):
@@ -250,7 +250,7 @@ def lcm(*a):
 def factorization(n):
     """Decompose n into a list of (prime,exponent) pairs."""
 
-    assert isinstance(n, integer_types)
+    assert isinstance(n, int)
 
     if n < 2:
         return []
@@ -313,7 +313,7 @@ def phi(n):  # pragma: no cover
         DeprecationWarning,
     )
 
-    assert isinstance(n, integer_types)
+    assert isinstance(n, int)
 
     if n < 3:
         return 1
@@ -362,7 +362,7 @@ def carmichael_of_factorized(f_list):  # pragma: no cover
         return 1
 
     result = carmichael_of_ppower(f_list[0])
-    for i in range(1, len(f_list)):
+    for i in xrange(1, len(f_list)):
         result = lcm(result, carmichael_of_ppower(f_list[i]))
 
     return result
@@ -511,7 +511,7 @@ def is_prime(n):
     while (r % 2) == 0:
         s = s + 1
         r = r // 2
-    for i in range(t):
+    for i in xrange(t):
         a = random.choice(smallprimes)
         y = pow(a, r, n)
         if y != 1 and y != n - 1:

@@ -1,7 +1,20 @@
-/doc
-/gradle
-/swig
-/tests
-/webp_js
+!Makefile.am
+
+/doc/
+/examples/test
+/extras/
+/gradle/
+/swig/
+/tests/
+/webp_js/
 
 /ChangeLog
+/NEWS
+
+/gradlew/
+/build.gradle
+/gradle.properties
+/gradlew
+/gradlew.bat
+/iosbuild.sh
+/xcframeworkbuild.sh
