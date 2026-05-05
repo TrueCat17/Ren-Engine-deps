@@ -50,7 +50,7 @@ else:
 ffmpeg_path = sources_path + 'ffmpeg/'
 if os.path.exists(ffmpeg_path):
 	os.makedirs(inc_path + 'libavcodec/')
-	need_avcodec_headers = [
+	need_avcodec_headers = (
 		'version_major.h',
 		'version.h',
 		'packet.h',
@@ -60,7 +60,7 @@ if os.path.exists(ffmpeg_path):
 		'codec_desc.h',
 		'codec.h',
 		'avcodec.h',
-	]
+	)
 	for f in need_avcodec_headers:
 		shutil.copyfile(ffmpeg_path + 'libavcodec/' + f, inc_path + 'libavcodec/' + f)
 	

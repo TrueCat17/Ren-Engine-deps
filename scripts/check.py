@@ -13,7 +13,7 @@ for prog in ('nasm', 'libtoolize', 'automake', 'autoconf', 'make'):
 
 not_found_libs = []
 for lib in libs:
-	if not os.path.exists(sources_path + lib + '/'):
+	if not os.path.isdir(sources_path + lib):
 		not_found_libs.append(lib)
 
 if not_found_libs:
