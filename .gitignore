@@ -22,7 +22,6 @@
 /sources/zlib-ng/test/Makefile
 /sources/zlib-ng/**/Makefile.tmp
 /sources/zlib-ng/zlib.h
-/sources/zlib-ng/gzread.c
 /sources/zlib-ng/makecrct
 /sources/zlib-ng/maketrees
 
